@@ -2,8 +2,8 @@ package com.syncbeat.mainframe.syncbeatmainframe.service;
 
 import com.syncbeat.mainframe.syncbeatmainframe.dto.UserRequestDto;
 import com.syncbeat.mainframe.syncbeatmainframe.dto.UserResponseDto;
-import com.syncbeat.mainframe.syncbeatmainframe.models.users;
-import com.syncbeat.mainframe.syncbeatmainframe.repository.userRepository;
+import com.syncbeat.mainframe.syncbeatmainframe.models.Users;
+import com.syncbeat.mainframe.syncbeatmainframe.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -14,9 +14,9 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class userService {
+public class UserService {
 
-	private final userRepository userRepository;
+	private final UserRepository userRepository;
 	private final BCryptPasswordEncoder bCryptPasswordEncoder;
 
 	public UserResponseDto createUser(UserRequestDto requestDto) {
@@ -29,7 +29,7 @@ public class userService {
 			encodedPassword = bCryptPasswordEncoder.encode(requestDto.getPassword());
 		}
 
-		users user = users.builder()
+		Users user = Users.builder()
 				.f_name(requestDto.getF_name())
 				.l_name(requestDto.getL_name())
 				.email(requestDto.getEmail())
@@ -38,7 +38,7 @@ public class userService {
 				.is_active(requestDto.getIs_active() != null ? requestDto.getIs_active() : true)
 				.build();
 
-		users savedUser = userRepository.save(user);
+		Users savedUser = userRepository.save(user);
 		return UserResponseDto.fromEntity(savedUser);
 	}
 
@@ -49,13 +49,13 @@ public class userService {
 	}
 
 	public UserResponseDto getUserById(UUID id) {
-		users user = userRepository.findById(id)
+		Users user = userRepository.findById(id)
 				.orElseThrow(() -> new RuntimeException("User not found with id: " + id));
 		return UserResponseDto.fromEntity(user);
 	}
 
 	public UserResponseDto updateUser(UUID id, UserRequestDto requestDto) {
-		users existingUser = userRepository.findById(id)
+		Users existingUser = userRepository.findById(id)
 				.orElseThrow(() -> new RuntimeException("User not found with id: " + id));
 
 		if (requestDto.getF_name() != null) {
@@ -77,7 +77,7 @@ public class userService {
 			existingUser.setIs_active(requestDto.getIs_active());
 		}
 
-		users updatedUser = userRepository.save(existingUser);
+		Users updatedUser = userRepository.save(existingUser);
 		return UserResponseDto.fromEntity(updatedUser);
 	}
 

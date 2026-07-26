@@ -3,16 +3,18 @@ package com.syncbeat.mainframe.syncbeatmainframe.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
-public class securityConfig {
+@EnableWebSecurity
+public class SecurityConfig {
 
 	@Bean
 	public BCryptPasswordEncoder bCryptPasswordEncoder() {
-		return new BCryptPasswordEncoder();
+		return new BCryptPasswordEncoder(12);
 	}
 
 	@Bean
@@ -20,8 +22,8 @@ public class securityConfig {
 		http
 				.csrf(AbstractHttpConfigurer::disable)
 				.authorizeHttpRequests(auth -> auth
-						.requestMatchers("/api/users/**").permitAll()
-						.anyRequest().permitAll()
+						.requestMatchers("/api/users/create","/api/auth/**").permitAll()
+						.anyRequest().authenticated()
 				);
 		return http.build();
 	}

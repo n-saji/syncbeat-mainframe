@@ -1,6 +1,6 @@
 package com.syncbeat.mainframe.syncbeatmainframe.repository;
 
-import com.syncbeat.mainframe.syncbeatmainframe.models.users;
+import com.syncbeat.mainframe.syncbeatmainframe.models.Users;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -19,15 +19,15 @@ import static org.mockito.Mockito.*;
 class userRepositoryTest {
 
 	@Mock
-	private userRepository repository;
+	private UserRepository repository;
 
-	private users testUser;
+	private Users testUser;
 	private UUID userId;
 
 	@BeforeEach
 	void setUp() {
 		userId = UUID.randomUUID();
-		testUser = users.builder()
+		testUser = Users.builder()
 				.id(userId)
 				.f_name("John")
 				.l_name("Doe")
@@ -41,9 +41,9 @@ class userRepositoryTest {
 	@Test
 	@DisplayName("Should save user successfully")
 	void testSaveUser() {
-		when(repository.save(any(users.class))).thenReturn(testUser);
+		when(repository.save(any(Users.class))).thenReturn(testUser);
 
-		users savedUser = repository.save(testUser);
+		Users savedUser = repository.save(testUser);
 
 		assertNotNull(savedUser);
 		assertEquals("John", savedUser.getF_name());
@@ -56,7 +56,7 @@ class userRepositoryTest {
 	void testFindById() {
 		when(repository.findById(userId)).thenReturn(Optional.of(testUser));
 
-		Optional<users> foundUser = repository.findById(userId);
+		Optional<Users> foundUser = repository.findById(userId);
 
 		assertTrue(foundUser.isPresent());
 		assertEquals(userId, foundUser.get().getId());
@@ -68,7 +68,7 @@ class userRepositoryTest {
 	void testFindByEmail() {
 		when(repository.findByEmail("john.doe@example.com")).thenReturn(Optional.of(testUser));
 
-		Optional<users> foundUser = repository.findByEmail("john.doe@example.com");
+		Optional<Users> foundUser = repository.findByEmail("john.doe@example.com");
 
 		assertTrue(foundUser.isPresent());
 		assertEquals("john.doe@example.com", foundUser.get().getEmail());

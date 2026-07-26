@@ -15,13 +15,15 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class users {
+public class Users {
 	@Id
 	private UUID id;
 	private String f_name;
 	private String l_name;
-	private String email;
+
 	@Column(unique = true)
+	private String email;
+	
 	private String password;
 	private Boolean is_admin;
 	private Boolean is_active;

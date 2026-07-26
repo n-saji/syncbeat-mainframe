@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.syncbeat.mainframe.syncbeatmainframe.dto.UserRequestDto;
 
 import com.syncbeat.mainframe.syncbeatmainframe.dto.UserResponseDto;
-import com.syncbeat.mainframe.syncbeatmainframe.service.userService;
+import com.syncbeat.mainframe.syncbeatmainframe.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -35,10 +35,10 @@ class userControllerTest {
 	private ObjectMapper objectMapper;
 
 	@Mock
-	private userService userService;
+	private UserService userService;
 
 	@InjectMocks
-	private userController userController;
+	private UserController userController;
 
 	private UUID userId;
 	private UserResponseDto responseDto;

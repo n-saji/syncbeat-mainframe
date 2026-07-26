@@ -2,7 +2,7 @@ package com.syncbeat.mainframe.syncbeatmainframe.controller;
 
 import com.syncbeat.mainframe.syncbeatmainframe.dto.UserRequestDto;
 import com.syncbeat.mainframe.syncbeatmainframe.dto.UserResponseDto;
-import com.syncbeat.mainframe.syncbeatmainframe.service.userService;
+import com.syncbeat.mainframe.syncbeatmainframe.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,17 +14,17 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
-public class userController {
+public class UserController {
 
-	private final userService userService;
+	private final UserService userService;
 
-	@PostMapping
+	@PostMapping("/create")
 	public ResponseEntity<UserResponseDto> createUser(@RequestBody UserRequestDto requestDto) {
 		UserResponseDto createdUser = userService.createUser(requestDto);
 		return new ResponseEntity<>(createdUser, HttpStatus.CREATED);
 	}
 
-	@GetMapping
+	@GetMapping("/all")
 	public ResponseEntity<List<UserResponseDto>> getAllUsers() {
 		List<UserResponseDto> users = userService.getAllUsers();
 		return ResponseEntity.ok(users);
