@@ -69,17 +69,15 @@ public class UserService {
 		if (requestDto.getLastName() != null) {
 			existingUser.setLastName(requestDto.getLastName());
 		}
-		if (requestDto.getEmail() != null) {
+		if (requestDto.getEmail() != null && !requestDto.getEmail().isEmpty() &&
+				existingUser.getEmail() != null && !existingUser.getEmail().equals(requestDto.getEmail())) {
+			if (userRepository.existsByEmail(requestDto.getEmail())) {
+				throw new IllegalArgumentException("User with email " + requestDto.getEmail() + " already exists");
+			}
 			existingUser.setEmail(requestDto.getEmail());
 		}
 		if (requestDto.getPassword() != null && !requestDto.getPassword().isEmpty()) {
 			existingUser.setPassword(bCryptPasswordEncoder.encode(requestDto.getPassword()));
-		}
-		if (requestDto.getAdmin() != null) {
-			existingUser.setAdmin(requestDto.getAdmin());
-		}
-		if (requestDto.getActive() != null) {
-			existingUser.setActive(requestDto.getActive());
 		}
 
 		Users updatedUser = userRepository.save(existingUser);
