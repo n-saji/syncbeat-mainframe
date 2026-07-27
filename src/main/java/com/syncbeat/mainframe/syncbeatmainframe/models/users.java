@@ -42,6 +42,9 @@ public class Users {
 
 	@PrePersist
 	public void prePersist() {
+		if(this.id == null) {
+			this.id = UUID.randomUUID();
+		}
 		updatedAt = LocalDateTime.now();
 		createdAt = LocalDateTime.now();
 	}

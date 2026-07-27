@@ -31,7 +31,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 	                                @NonNull FilterChain filterChain)
 			throws IOException, ServletException {
 		// Implement JWT validation logic here
-
+		if(request.getRequestURI().endsWith("/login")) {
+			filterChain.doFilter(request, response);
+			return;
+		}
 		String token = extractToken(request);
 
 		if (token != null && jwtService.validateAccessToken(token)) {

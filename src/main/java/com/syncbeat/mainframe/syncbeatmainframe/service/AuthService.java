@@ -14,12 +14,10 @@ public class AuthService {
 
 
 	public AuthResponseDto loginUser(AuthRequestDto authRequestDto) {
-		// Implement your login logic here
 		if (!userService.checkUserExistsByMail(authRequestDto.getEmail())) {
 			throw new RuntimeException("User not found with email: " + authRequestDto.getEmail());
 		}
 		userService.verifyUserCredentials(authRequestDto);
-
 		UserResponseDto userResponseDto = userService.getUserByEmail(authRequestDto.getEmail());
 		return AuthResponseDto.builder()
 				.user(userResponseDto)

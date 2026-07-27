@@ -31,7 +31,7 @@ public class AuthController {
 		// Implement your login logic here
 		AuthResponseDto resp = authService.loginUser(authRequestDto);
 		TokenResponseDto tokenResponseDto =
-				jwtService.generateToken(authRequestDto.getEmail());
+				jwtService.generateToken(resp.getUser().getId().toString());
 
 		ResponseCookie refreshToken = ResponseCookie.from("refresh_token",
 				tokenResponseDto.refreshToken())

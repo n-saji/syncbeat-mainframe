@@ -14,21 +14,24 @@ import org.springframework.stereotype.Service;
 import javax.crypto.SecretKey;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Map;
 
 @Service
 public class JWTService {
-	private SecretKey secretKey;
+	private final SecretKey secretKey;
 	private static final Logger logger = LoggerFactory.getLogger(JWTService.class);
+	private static final String TOKEN_TYPE = "type";
+	private static final String ACCESS = "access_token";
+	private static final String REFRESH = "refresh_token";
 
 	public JWTService(@Value("${jwt.secret}") String secretKey) {
 		this.secretKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(secretKey));
 	}
 
 	public TokenResponseDto generateToken(@NotNull String userId) {
-
-		HashMap<String, String> accessClaims = new HashMap<>();
-		accessClaims.put("type", "access_token");
-		String accessToken = Jwts.builder().claims(accessClaims)
+		Map<String, Object> claims = new HashMap<>();
+		claims.put(TOKEN_TYPE, ACCESS);
+		String accessToken = Jwts.builder().claims(claims)
 				.subject(userId)
 				.issuedAt(new Date(System.currentTimeMillis()))
 				.expiration(new Date(System.currentTimeMillis() + 15 * 60 * 1000)) // 15 minutes
@@ -36,9 +39,8 @@ public class JWTService {
 				.compact();
 
 
-
 		HashMap<String, String> refreshClaims = new HashMap<>();
-		refreshClaims.put("type", "refresh_token");
+		refreshClaims.put(TOKEN_TYPE, REFRESH);
 		String refreshToken = Jwts.builder().claims(refreshClaims)
 				.subject(userId)
 				.issuedAt(new Date(System.currentTimeMillis()))
@@ -49,30 +51,30 @@ public class JWTService {
 		return new TokenResponseDto(accessToken, refreshToken);
 	}
 
-	public boolean validateAccessToken(@NotNull String accessToken){
-		try{
-					Claims c = Jwts.parser()
-							.verifyWith(secretKey)
-							.build()
-							.parseSignedClaims(accessToken).getPayload();
-			return "access_token".equals(c.get("type"));
-		}catch (Exception e){
-			logger.warn("Access token validation failed: {}", e.getMessage(), e);
+	public boolean validateAccessToken(String token) {
+		return validateToken(token, ACCESS);
+	}
+
+	public boolean validateRefreshToken(String token) {
+		return validateToken(token, REFRESH);
+	}
+
+	private boolean validateToken(String token, String expectedType) {
+		try {
+			Claims claims = extractClaims(token);
+			return expectedType.equals(claims.get(TOKEN_TYPE));
+		} catch (Exception e) {
+			logger.warn("Token validation failed", e);
 			return false;
 		}
 	}
 
-	public boolean validateRefreshToken(@NotNull String refreshToken){
-		try{
-			Claims c = Jwts.parser()
-					.verifyWith(secretKey)
-					.build()
-					.parseSignedClaims(refreshToken).getPayload();
-			return "refresh_token".equals(c.get("type"));
-		}catch (Exception e){
-			logger.warn("Refresh token validation failed: {}", e.getMessage(), e);
-			return false;
-		}
+	private Claims extractClaims(String token) {
+		return Jwts.parser()
+				.verifyWith(secretKey)
+				.build()
+				.parseSignedClaims(token)
+				.getPayload();
 	}
 
 	/** Expecting only access token **/
@@ -82,8 +84,9 @@ public class JWTService {
 				.build()
 				.parseSignedClaims(accessToken)
 				.getPayload();
-		if (claims.get("type").equals("access_token") || claims.get("type").equals("refresh_token")) {
-			return claims.get("subject").toString();
+
+		if (claims.get(TOKEN_TYPE).equals(ACCESS)) {
+			return claims.getSubject();
 		}
 		return null;
 	}
