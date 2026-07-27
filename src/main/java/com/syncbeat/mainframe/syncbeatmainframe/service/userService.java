@@ -108,4 +108,10 @@ public class UserService {
 				.orElseThrow(() -> new RuntimeException("User not found with email: " + email));
 		return UserResponseDto.fromEntity(user);
 	}
+
+	public boolean checkIfAdmin(UUID uuid) {
+		Users user = userRepository.findById(uuid)
+				.orElseThrow(() -> new RuntimeException("User not found with id: " + uuid));
+		return user.getAdmin() != null && user.getAdmin();
+	}
 }
