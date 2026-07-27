@@ -10,10 +10,11 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 public class UserRequestDto {
-	private String f_name;
-	private String l_name;
+
+	private String firstName;
+	private String lastName;
 	private String email;
 	private String password;
-	private Boolean is_admin;
-	private Boolean is_active;
+	private Boolean admin;
+	private Boolean active;
 }

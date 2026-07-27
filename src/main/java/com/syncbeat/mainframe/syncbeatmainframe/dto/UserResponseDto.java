@@ -15,25 +15,25 @@ import java.util.UUID;
 @Builder
 public class UserResponseDto {
 	private UUID id;
-	private String f_name;
-	private String l_name;
+	private String firstName;
+	private String lastName;
 	private String email;
-	private Boolean is_admin;
-	private Boolean is_active;
-	private LocalDateTime created_at;
-	private LocalDateTime updated_at;
+	private Boolean admin;
+	private Boolean active;
+	private LocalDateTime createdAt;
+	private LocalDateTime updatedAt;
 
 	public static UserResponseDto fromEntity(Users user) {
 		if (user == null) return null;
 		return UserResponseDto.builder()
 				.id(user.getId())
-				.f_name(user.getF_name())
-				.l_name(user.getL_name())
+				.firstName(user.getFirstName())
+				.lastName(user.getLastName())
 				.email(user.getEmail())
-				.is_admin(user.getIs_admin())
-				.is_active(user.getIs_active())
-				.created_at(user.getCreated_at())
-				.updated_at(user.getUpdated_at())
+				.admin(user.getAdmin())
+				.active(user.getActive())
+				.createdAt(user.getCreatedAt())
+				.updatedAt(user.getUpdatedAt())
 				.build();
 	}
 }

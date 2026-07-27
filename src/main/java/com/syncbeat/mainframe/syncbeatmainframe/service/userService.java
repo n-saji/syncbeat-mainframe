@@ -1,9 +1,12 @@
 package com.syncbeat.mainframe.syncbeatmainframe.service;
 
+import com.syncbeat.mainframe.syncbeatmainframe.dto.AuthRequestDto;
 import com.syncbeat.mainframe.syncbeatmainframe.dto.UserRequestDto;
 import com.syncbeat.mainframe.syncbeatmainframe.dto.UserResponseDto;
 import com.syncbeat.mainframe.syncbeatmainframe.models.Users;
 import com.syncbeat.mainframe.syncbeatmainframe.repository.UserRepository;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -30,12 +33,14 @@ public class UserService {
 		}
 
 		Users user = Users.builder()
-				.f_name(requestDto.getF_name())
-				.l_name(requestDto.getL_name())
+				.firstName(requestDto.getFirstName())
+				.lastName(requestDto.getLastName())
 				.email(requestDto.getEmail())
 				.password(encodedPassword)
-				.is_admin(requestDto.getIs_admin() != null ? requestDto.getIs_admin() : false)
-				.is_active(requestDto.getIs_active() != null ? requestDto.getIs_active() : true)
+				.admin(requestDto.getAdmin() != null ?
+						requestDto.getAdmin() : false)
+				.active(requestDto.getActive() != null ?
+						requestDto.getActive() : true)
 				.build();
 
 		Users savedUser = userRepository.save(user);
@@ -58,11 +63,11 @@ public class UserService {
 		Users existingUser = userRepository.findById(id)
 				.orElseThrow(() -> new RuntimeException("User not found with id: " + id));
 
-		if (requestDto.getF_name() != null) {
-			existingUser.setF_name(requestDto.getF_name());
+		if (requestDto.getFirstName() != null) {
+			existingUser.setFirstName(requestDto.getFirstName());
 		}
-		if (requestDto.getL_name() != null) {
-			existingUser.setL_name(requestDto.getL_name());
+		if (requestDto.getLastName() != null) {
+			existingUser.setLastName(requestDto.getLastName());
 		}
 		if (requestDto.getEmail() != null) {
 			existingUser.setEmail(requestDto.getEmail());
@@ -70,11 +75,11 @@ public class UserService {
 		if (requestDto.getPassword() != null && !requestDto.getPassword().isEmpty()) {
 			existingUser.setPassword(bCryptPasswordEncoder.encode(requestDto.getPassword()));
 		}
-		if (requestDto.getIs_admin() != null) {
-			existingUser.setIs_admin(requestDto.getIs_admin());
+		if (requestDto.getAdmin() != null) {
+			existingUser.setAdmin(requestDto.getAdmin());
 		}
-		if (requestDto.getIs_active() != null) {
-			existingUser.setIs_active(requestDto.getIs_active());
+		if (requestDto.getActive() != null) {
+			existingUser.setActive(requestDto.getActive());
 		}
 
 		Users updatedUser = userRepository.save(existingUser);
@@ -86,5 +91,21 @@ public class UserService {
 			throw new RuntimeException("User not found with id: " + id);
 		}
 		userRepository.deleteById(id);
+	}
+
+	public boolean checkUserExistsByMail(@Email @NotBlank String email) {
+		return userRepository.existsByEmail(email);
+	}
+
+	public void verifyUserCredentials(AuthRequestDto authRequestDto) {
+		userRepository.findByEmail(authRequestDto.getEmail())
+				.filter(user -> bCryptPasswordEncoder.matches(authRequestDto.getPassword(), user.getPassword()))
+				.orElseThrow(() -> new RuntimeException("Invalid email or password"));
+	}
+
+	public UserResponseDto getUserByEmail(@Email @NotBlank String email) {
+		Users user = userRepository.findByEmail(email)
+				.orElseThrow(() -> new RuntimeException("User not found with email: " + email));
+		return UserResponseDto.fromEntity(user);
 	}
 }

@@ -18,27 +18,37 @@ import java.util.UUID;
 public class Users {
 	@Id
 	private UUID id;
-	private String f_name;
-	private String l_name;
+	@Column(name = "f_name")
+	private String firstName;
+	@Column(name = "l_name")
+	private String lastName;
 
 	@Column(unique = true)
 	private String email;
 	
 	private String password;
-	private Boolean is_admin;
-	private Boolean is_active;
-	private LocalDateTime created_at;
-	private LocalDateTime updated_at;
+
+	@Column(name = "is_admin")
+	private Boolean admin;
+
+	@Column(name = "is_active")
+	private Boolean active;
+
+	@Column(name = "created_at")
+	private LocalDateTime createdAt;
+
+	@Column(name = "updated_at")
+	private LocalDateTime updatedAt;
 
 	@PrePersist
 	public void prePersist() {
-		updated_at = LocalDateTime.now();
-		created_at = LocalDateTime.now();
+		updatedAt = LocalDateTime.now();
+		createdAt = LocalDateTime.now();
 	}
 
 	@PreUpdate
 	public void preUpdate() {
-		updated_at = LocalDateTime.now();
+		updatedAt = LocalDateTime.now();
 	}
 
 }
