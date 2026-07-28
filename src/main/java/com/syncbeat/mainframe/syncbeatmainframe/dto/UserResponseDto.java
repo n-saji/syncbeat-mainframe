@@ -1,6 +1,6 @@
 package com.syncbeat.mainframe.syncbeatmainframe.dto;
 
-import com.syncbeat.mainframe.syncbeatmainframe.models.Users;
+import com.syncbeat.mainframe.syncbeatmainframe.models.User;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -23,7 +23,7 @@ public class UserResponseDto {
 	private LocalDateTime createdAt;
 	private LocalDateTime updatedAt;
 
-	public static UserResponseDto fromEntity(Users user) {
+	public static UserResponseDto fromEntity(User user) {
 		if (user == null) return null;
 		return UserResponseDto.builder()
 				.id(user.getId())

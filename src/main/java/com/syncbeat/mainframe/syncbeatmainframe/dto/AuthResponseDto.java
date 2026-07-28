@@ -1,6 +1,5 @@
 package com.syncbeat.mainframe.syncbeatmainframe.dto;
 
-import com.syncbeat.mainframe.syncbeatmainframe.models.Users;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

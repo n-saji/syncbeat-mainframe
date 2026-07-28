@@ -3,7 +3,7 @@ package com.syncbeat.mainframe.syncbeatmainframe.service;
 import com.syncbeat.mainframe.syncbeatmainframe.dto.AuthRequestDto;
 import com.syncbeat.mainframe.syncbeatmainframe.dto.UserRequestDto;
 import com.syncbeat.mainframe.syncbeatmainframe.dto.UserResponseDto;
-import com.syncbeat.mainframe.syncbeatmainframe.models.Users;
+import com.syncbeat.mainframe.syncbeatmainframe.models.User;
 import com.syncbeat.mainframe.syncbeatmainframe.repository.UserRepository;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -32,7 +32,7 @@ public class UserService {
 			encodedPassword = bCryptPasswordEncoder.encode(requestDto.getPassword());
 		}
 
-		Users user = Users.builder()
+		User user = User.builder()
 				.firstName(requestDto.getFirstName())
 				.lastName(requestDto.getLastName())
 				.email(requestDto.getEmail())
@@ -43,7 +43,7 @@ public class UserService {
 						requestDto.getActive() : true)
 				.build();
 
-		Users savedUser = userRepository.save(user);
+		User savedUser = userRepository.save(user);
 		return UserResponseDto.fromEntity(savedUser);
 	}
 
@@ -54,13 +54,13 @@ public class UserService {
 	}
 
 	public UserResponseDto getUserById(UUID id) {
-		Users user = userRepository.findById(id)
+		User user = userRepository.findById(id)
 				.orElseThrow(() -> new RuntimeException("User not found with id: " + id));
 		return UserResponseDto.fromEntity(user);
 	}
 
 	public UserResponseDto updateUser(UUID id, UserRequestDto requestDto) {
-		Users existingUser = userRepository.findById(id)
+		User existingUser = userRepository.findById(id)
 				.orElseThrow(() -> new RuntimeException("User not found with id: " + id));
 
 		if (requestDto.getFirstName() != null) {
@@ -80,7 +80,7 @@ public class UserService {
 			existingUser.setPassword(bCryptPasswordEncoder.encode(requestDto.getPassword()));
 		}
 
-		Users updatedUser = userRepository.save(existingUser);
+		User updatedUser = userRepository.save(existingUser);
 		return UserResponseDto.fromEntity(updatedUser);
 	}
 
@@ -102,13 +102,13 @@ public class UserService {
 	}
 
 	public UserResponseDto getUserByEmail(@Email @NotBlank String email) {
-		Users user = userRepository.findByEmail(email)
+		User user = userRepository.findByEmail(email)
 				.orElseThrow(() -> new RuntimeException("User not found with email: " + email));
 		return UserResponseDto.fromEntity(user);
 	}
 
 	public boolean checkIfAdmin(UUID uuid) {
-		Users user = userRepository.findById(uuid)
+		User user = userRepository.findById(uuid)
 				.orElseThrow(() -> new RuntimeException("User not found with id: " + uuid));
 		return user.getAdmin() != null && user.getAdmin();
 	}

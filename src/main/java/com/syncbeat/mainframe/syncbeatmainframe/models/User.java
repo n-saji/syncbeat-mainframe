@@ -15,7 +15,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Users {
+public class User {
 	@Id
 	private UUID id;
 	@Column(name = "f_name")

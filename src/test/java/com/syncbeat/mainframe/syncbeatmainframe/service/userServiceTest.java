@@ -2,7 +2,7 @@ package com.syncbeat.mainframe.syncbeatmainframe.service;
 
 import com.syncbeat.mainframe.syncbeatmainframe.dto.UserRequestDto;
 import com.syncbeat.mainframe.syncbeatmainframe.dto.UserResponseDto;
-import com.syncbeat.mainframe.syncbeatmainframe.models.Users;
+import com.syncbeat.mainframe.syncbeatmainframe.models.User;
 import com.syncbeat.mainframe.syncbeatmainframe.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -35,13 +35,13 @@ class userServiceTest {
 	private UserService service;
 
 	private UUID userId;
-	private Users userEntity;
+	private User userEntity;
 	private UserRequestDto requestDto;
 
 	@BeforeEach
 	void setUp() {
 		userId = UUID.randomUUID();
-		userEntity = Users.builder()
+		userEntity = User.builder()
 				.id(userId)
 				.f_name("Alice")
 				.l_name("Smith")
@@ -68,7 +68,7 @@ class userServiceTest {
 	void testCreateUser_Success() {
 		when(repository.existsByEmail("alice@example.com")).thenReturn(false);
 		when(passwordEncoder.encode("plain_pass")).thenReturn("encoded_pass");
-		when(repository.save(any(Users.class))).thenReturn(userEntity);
+		when(repository.save(any(User.class))).thenReturn(userEntity);
 
 		UserResponseDto response = service.createUser(requestDto);
 
@@ -77,7 +77,7 @@ class userServiceTest {
 		assertEquals("alice@example.com", response.getEmail());
 
 		verify(passwordEncoder, times(1)).encode("plain_pass");
-		verify(repository, times(1)).save(any(Users.class));
+		verify(repository, times(1)).save(any(User.class));
 	}
 
 	@Test
@@ -91,7 +91,7 @@ class userServiceTest {
 		);
 
 		assertTrue(exception.getMessage().contains("already exists"));
-		verify(repository, never()).save(any(Users.class));
+		verify(repository, never()).save(any(User.class));
 	}
 
 	@Test
@@ -141,7 +141,7 @@ class userServiceTest {
 
 		when(repository.findById(userId)).thenReturn(Optional.of(userEntity));
 		when(passwordEncoder.encode("new_plain_pass")).thenReturn("new_encoded_pass");
-		when(repository.save(any(Users.class))).thenAnswer(invocation -> invocation.getArgument(0));
+		when(repository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
 		UserResponseDto updatedResponse = service.updateUser(userId, updateDto);
 
