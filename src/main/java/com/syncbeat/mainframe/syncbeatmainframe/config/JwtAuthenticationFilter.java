@@ -8,7 +8,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
-import org.springframework.context.annotation.Bean;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
@@ -30,7 +29,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 	                                @NonNull HttpServletResponse response,
 	                                @NonNull FilterChain filterChain)
 			throws IOException, ServletException {
-		// Implement JWT validation logic here
 		if(request.getRequestURI().endsWith("/login")) {
 			filterChain.doFilter(request, response);
 			return;
@@ -69,5 +67,4 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 		}
 		return null;
 	}
-
 }
