@@ -28,7 +28,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @ExtendWith(MockitoExtension.class)
-class userControllerTest {
+class UserControllerTest {
 
 	private MockMvc mockMvc;
 
@@ -55,22 +55,22 @@ class userControllerTest {
 
 		responseDto = UserResponseDto.builder()
 				.id(userId)
-				.f_name("Jane")
-				.l_name("Doe")
+				.firstName("Jane")
+				.lastName("Doe")
 				.email("jane.doe@example.com")
-				.is_admin(false)
-				.is_active(true)
-				.created_at(LocalDateTime.now())
-				.updated_at(LocalDateTime.now())
+				.admin(false)
+				.active(true)
+				.createdAt(LocalDateTime.now())
+				.updatedAt(LocalDateTime.now())
 				.build();
 
 		requestDto = UserRequestDto.builder()
-				.f_name("Jane")
-				.l_name("Doe")
+				.firstName("Jane")
+				.lastName("Doe")
 				.email("jane.doe@example.com")
 				.password("secret123")
-				.is_admin(false)
-				.is_active(true)
+				.admin(false)
+				.active(true)
 				.build();
 	}
 

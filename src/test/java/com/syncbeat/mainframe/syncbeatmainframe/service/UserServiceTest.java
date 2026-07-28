@@ -23,7 +23,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class userServiceTest {
+class UserServiceTest {
 
 	@Mock
 	private UserRepository repository;
@@ -43,23 +43,23 @@ class userServiceTest {
 		userId = UUID.randomUUID();
 		userEntity = User.builder()
 				.id(userId)
-				.f_name("Alice")
-				.l_name("Smith")
+				.firstName("Alice")
+				.lastName("Smith")
 				.email("alice@example.com")
 				.password("encoded_pass")
-				.is_admin(false)
-				.is_active(true)
-				.created_at(LocalDateTime.now())
-				.updated_at(LocalDateTime.now())
+				.admin(false)
+				.active(true)
+				.createdAt(LocalDateTime.now())
+				.updatedAt(LocalDateTime.now())
 				.build();
 
 		requestDto = UserRequestDto.builder()
-				.f_name("Alice")
-				.l_name("Smith")
+				.firstName("Alice")
+				.lastName("Smith")
 				.email("alice@example.com")
 				.password("plain_pass")
-				.is_admin(false)
-				.is_active(true)
+				.admin(false)
+				.active(true)
 				.build();
 	}
 
@@ -73,7 +73,7 @@ class userServiceTest {
 		UserResponseDto response = service.createUser(requestDto);
 
 		assertNotNull(response);
-		assertEquals("Alice", response.getF_name());
+		assertEquals("Alice", response.getFirstName());
 		assertEquals("alice@example.com", response.getEmail());
 
 		verify(passwordEncoder, times(1)).encode("plain_pass");
@@ -102,7 +102,7 @@ class userServiceTest {
 		List<UserResponseDto> usersList = service.getAllUsers();
 
 		assertEquals(1, usersList.size());
-		assertEquals("Alice", usersList.get(0).getF_name());
+		assertEquals("Alice", usersList.get(0).getFirstName());
 		verify(repository, times(1)).findAll();
 	}
 
@@ -115,7 +115,7 @@ class userServiceTest {
 
 		assertNotNull(response);
 		assertEquals(userId, response.getId());
-		assertEquals("Alice", response.getF_name());
+		assertEquals("Alice", response.getFirstName());
 	}
 
 	@Test
@@ -135,7 +135,7 @@ class userServiceTest {
 	@DisplayName("Update User - Should update user fields and encode new password if provided")
 	void testUpdateUser_Success() {
 		UserRequestDto updateDto = UserRequestDto.builder()
-				.f_name("Alice Updated")
+				.firstName("Alice Updated")
 				.password("new_plain_pass")
 				.build();
 
@@ -146,7 +146,7 @@ class userServiceTest {
 		UserResponseDto updatedResponse = service.updateUser(userId, updateDto);
 
 		assertNotNull(updatedResponse);
-		assertEquals("Alice Updated", updatedResponse.getF_name());
+		assertEquals("Alice Updated", updatedResponse.getFirstName());
 		verify(passwordEncoder, times(1)).encode("new_plain_pass");
 		verify(repository, times(1)).save(userEntity);
 	}

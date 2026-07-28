@@ -16,7 +16,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class userRepositoryTest {
+class UserRepositoryTest {
 
 	@Mock
 	private UserRepository repository;
@@ -29,12 +29,12 @@ class userRepositoryTest {
 		userId = UUID.randomUUID();
 		testUser = User.builder()
 				.id(userId)
-				.f_name("John")
-				.l_name("Doe")
+				.firstName("John")
+				.lastName("Doe")
 				.email("john.doe@example.com")
 				.password("encoded_password")
-				.is_admin(false)
-				.is_active(true)
+				.admin(false)
+				.active(true)
 				.build();
 	}
 
@@ -46,7 +46,7 @@ class userRepositoryTest {
 		User savedUser = repository.save(testUser);
 
 		assertNotNull(savedUser);
-		assertEquals("John", savedUser.getF_name());
+		assertEquals("John", savedUser.getFirstName());
 		assertEquals("john.doe@example.com", savedUser.getEmail());
 		verify(repository, times(1)).save(testUser);
 	}
