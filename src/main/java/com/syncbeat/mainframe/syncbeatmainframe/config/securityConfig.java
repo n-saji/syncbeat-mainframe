@@ -1,5 +1,6 @@
 package com.syncbeat.mainframe.syncbeatmainframe.config;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Value;

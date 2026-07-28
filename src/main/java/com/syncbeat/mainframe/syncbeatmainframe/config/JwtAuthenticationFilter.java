@@ -25,14 +25,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 	private final JWTService jwtService;
 
 	@Override
+	protected boolean shouldNotFilter(HttpServletRequest request) {
+		String uri = request.getRequestURI();
+		return uri.startsWith("/api/auth/")
+				|| uri.equals("/api/users/create")
+				|| uri.equals("/error");
+	}
+
+	@Override
 	protected void doFilterInternal(@NonNull HttpServletRequest request,
 	                                @NonNull HttpServletResponse response,
 	                                @NonNull FilterChain filterChain)
 			throws IOException, ServletException {
-		if(request.getRequestURI().endsWith("/login")) {
-			filterChain.doFilter(request, response);
-			return;
-		}
+
 		String token = extractToken(request);
 
 		if (token != null && jwtService.validateAccessToken(token)) {
