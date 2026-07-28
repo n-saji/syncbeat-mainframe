@@ -1,6 +1,9 @@
 package com.syncbeat.mainframe.syncbeatmainframe.config;
 
+import com.syncbeat.mainframe.syncbeatmainframe.models.User;
+import com.syncbeat.mainframe.syncbeatmainframe.repository.UserRepository;
 import com.syncbeat.mainframe.syncbeatmainframe.service.JWTService;
+import com.syncbeat.mainframe.syncbeatmainframe.service.UserService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
@@ -23,6 +26,7 @@ import java.util.UUID;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
 	private final JWTService jwtService;
+	private final UserRepository userRepository;
 
 	@Override
 	protected boolean shouldNotFilter(HttpServletRequest request) {
@@ -38,19 +42,35 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 	                                @NonNull FilterChain filterChain)
 			throws IOException, ServletException {
 
-		String token = extractToken(request);
+		if (SecurityContextHolder.getContext().getAuthentication() == null) {
 
-		if (token != null && jwtService.validateAccessToken(token)) {
-			String userId = jwtService.getSubjectFromToken(token);
-			if (userId != null) {
-				try {
-					UUID uid = UUID.fromString(userId);
-					var principal = new UserPrincipal(uid);
-					var auth = new UsernamePasswordAuthenticationToken(principal, null, List.of());
-					auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-					SecurityContextHolder.getContext().setAuthentication(auth);
-				} catch (IllegalArgumentException ignored) {
-					// malformed UUID subject — leave request unauthenticated
+			String token = extractToken(request);
+
+			if (token != null && jwtService.validateAccessToken(token)) {
+				String userId = jwtService.getSubjectFromToken(token);
+				if (userId != null) {
+					try {
+						UUID uid = UUID.fromString(userId);
+						User principal;
+						try {
+							principal =
+									userRepository.findById(uid).orElseThrow(() -> new RuntimeException("User not found with id: " + uid));
+
+							if (!principal.getActive()) {
+								response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
+								return;
+							}
+
+						} catch (Exception e) {
+							response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
+							return;
+						}
+						var auth = new UsernamePasswordAuthenticationToken(principal, null, List.of());
+						auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+						SecurityContextHolder.getContext().setAuthentication(auth);
+					} catch (IllegalArgumentException ignored) {
+						// malformed UUID subject — leave request unauthenticated
+					}
 				}
 			}
 		}

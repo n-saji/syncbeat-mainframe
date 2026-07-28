@@ -1,5 +1,6 @@
 package com.syncbeat.mainframe.syncbeatmainframe.config;
 
+import com.syncbeat.mainframe.syncbeatmainframe.repository.UserRepository;
 import com.syncbeat.mainframe.syncbeatmainframe.service.JWTService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
@@ -22,6 +23,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class WebSocketSecurityConfig implements WebSocketMessageBrokerConfigurer {
 	private final JWTService jwtService;
+	private final UserRepository userRepository;
 
 	@Override
 	public void configureClientInboundChannel(ChannelRegistration registration) {
@@ -41,7 +43,7 @@ public class WebSocketSecurityConfig implements WebSocketMessageBrokerConfigurer
 					try {
 						UUID uuid = UUID.fromString(userId);
 
-						var principal = new UserPrincipal(uuid);
+						var principal = userRepository.findById(uuid).orElseThrow(() -> new RuntimeException("User not found with id: " + uuid));
 						Authentication auth = new UsernamePasswordAuthenticationToken(
 								principal, null, List.of());
 

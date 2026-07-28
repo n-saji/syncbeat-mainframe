@@ -8,10 +8,12 @@ import com.syncbeat.mainframe.syncbeatmainframe.repository.UserRepository;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -37,10 +39,8 @@ public class UserService {
 				.lastName(requestDto.getLastName())
 				.email(requestDto.getEmail())
 				.password(encodedPassword)
-				.admin(requestDto.getAdmin() != null ?
-						requestDto.getAdmin() : false)
-				.active(requestDto.getActive() != null ?
-						requestDto.getActive() : true)
+				.admin(requestDto.getAdmin() != null && requestDto.getAdmin())
+				.active(requestDto.getActive() == null || requestDto.getActive())
 				.build();
 
 		User savedUser = userRepository.save(user);
@@ -59,9 +59,12 @@ public class UserService {
 		return UserResponseDto.fromEntity(user);
 	}
 
-	public UserResponseDto updateUser(UUID id, UserRequestDto requestDto) {
-		User existingUser = userRepository.findById(id)
-				.orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+	public UserResponseDto updateUser(UserRequestDto requestDto) {
+		User existingUser = (User) Objects.requireNonNull(SecurityContextHolder
+						.getContext()
+						.getAuthentication())
+				.getPrincipal();
+		assert existingUser != null;
 
 		if (requestDto.getFirstName() != null) {
 			existingUser.setFirstName(requestDto.getFirstName());

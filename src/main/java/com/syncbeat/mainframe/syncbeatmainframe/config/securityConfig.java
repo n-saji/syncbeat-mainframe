@@ -1,9 +1,7 @@
 package com.syncbeat.mainframe.syncbeatmainframe.config;
 
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.jspecify.annotations.NonNull;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -19,8 +17,13 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
-	private final String allowedOrigins = System.getenv("ALLOWED_ORIGINS");
-	private final String[] origins =  allowedOrigins.split(",") ;
+	private final String allowedOrigins = resolveAllowedOrigins();
+	private final String[] origins = allowedOrigins.split(",");
+
+	private String resolveAllowedOrigins() {
+		String envValue = System.getenv("ALLOWED_ORIGINS");
+		return (envValue == null || envValue.isBlank()) ? "http://localhost:3000" : envValue;
+	}
 
 	@Bean
 	public BCryptPasswordEncoder bCryptPasswordEncoder() {
@@ -28,7 +31,7 @@ public class SecurityConfig {
 	}
 
 	@Bean
-	public SecurityFilterChain filterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthFilter) throws Exception {
+	public SecurityFilterChain filterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthFilter) {
 		http
 				.csrf(AbstractHttpConfigurer::disable)
 				.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

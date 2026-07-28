@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.UuidGenerator;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -17,15 +18,19 @@ import java.util.UUID;
 @Builder
 public class User {
 	@Id
+	@UuidGenerator
 	private UUID id;
-	@Column(name = "f_name")
+
+	@Column(name = "f_name",nullable = false)
 	private String firstName;
-	@Column(name = "l_name")
+
+	@Column(name = "l_name",nullable = false)
 	private String lastName;
 
-	@Column(unique = true)
+	@Column(unique = true,  nullable = false)
 	private String email;
-	
+
+	@Column(nullable = false)
 	private String password;
 
 	@Column(name = "is_admin")
@@ -42,9 +47,6 @@ public class User {
 
 	@PrePersist
 	public void prePersist() {
-		if(this.id == null) {
-			this.id = UUID.randomUUID();
-		}
 		updatedAt = LocalDateTime.now();
 		createdAt = LocalDateTime.now();
 	}

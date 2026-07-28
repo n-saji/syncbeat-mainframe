@@ -5,12 +5,15 @@ import com.syncbeat.mainframe.syncbeatmainframe.dto.UserResponseDto;
 import com.syncbeat.mainframe.syncbeatmainframe.models.User;
 import com.syncbeat.mainframe.syncbeatmainframe.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import java.time.LocalDateTime;
@@ -61,6 +64,17 @@ class UserServiceTest {
 				.admin(false)
 				.active(true)
 				.build();
+	}
+
+	@AfterEach
+	void tearDown() {
+		SecurityContextHolder.clearContext();
+	}
+
+	private void setAuthenticatedUser(User principal) {
+		SecurityContextHolder.getContext().setAuthentication(
+				new UsernamePasswordAuthenticationToken(principal, null)
+		);
 	}
 
 	@Test
@@ -139,11 +153,11 @@ class UserServiceTest {
 				.password("new_plain_pass")
 				.build();
 
-		when(repository.findById(userId)).thenReturn(Optional.of(userEntity));
+		setAuthenticatedUser(userEntity);
 		when(passwordEncoder.encode("new_plain_pass")).thenReturn("new_encoded_pass");
 		when(repository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-		UserResponseDto updatedResponse = service.updateUser(userId, updateDto);
+		UserResponseDto updatedResponse = service.updateUser(updateDto);
 
 		assertNotNull(updatedResponse);
 		assertEquals("Alice Updated", updatedResponse.getFirstName());

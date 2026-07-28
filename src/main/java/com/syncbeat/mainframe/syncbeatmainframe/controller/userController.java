@@ -1,16 +1,18 @@
 package com.syncbeat.mainframe.syncbeatmainframe.controller;
 
-import com.syncbeat.mainframe.syncbeatmainframe.config.UserPrincipal;
 import com.syncbeat.mainframe.syncbeatmainframe.dto.UserRequestDto;
 import com.syncbeat.mainframe.syncbeatmainframe.dto.UserResponseDto;
+import com.syncbeat.mainframe.syncbeatmainframe.models.User;
 import com.syncbeat.mainframe.syncbeatmainframe.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @RestController
@@ -27,8 +29,13 @@ public class UserController {
 	}
 
 	@GetMapping("/all")
-	public ResponseEntity<List<UserResponseDto>> getAllUsers(@AuthenticationPrincipal UserPrincipal user) {
-		if(!userService.checkIfAdmin(user.userId())){
+	public ResponseEntity<List<UserResponseDto>> getAllUsers() {
+		User user = (User) Objects.requireNonNull(SecurityContextHolder
+						.getContext()
+						.getAuthentication())
+				.getPrincipal();
+
+		if(user != null && !user.getAdmin()) {
 			return new ResponseEntity<>(HttpStatus.FORBIDDEN);
 		}
 		List<UserResponseDto> users = userService.getAllUsers();
@@ -36,8 +43,13 @@ public class UserController {
 	}
 
 	@GetMapping("/{id}")
-	public ResponseEntity<UserResponseDto> getUserById(@AuthenticationPrincipal UserPrincipal user,@PathVariable UUID id) {
-		if(!userService.checkIfAdmin(user.userId())){
+	public ResponseEntity<UserResponseDto> getUserById(@PathVariable UUID id) {
+		User user = (User) Objects.requireNonNull(SecurityContextHolder
+						.getContext()
+						.getAuthentication())
+				.getPrincipal();
+
+		if(user != null && !user.getAdmin()) {
 			return new ResponseEntity<>(HttpStatus.FORBIDDEN);
 		}
 		UserResponseDto userResp = userService.getUserById(id);
@@ -45,21 +57,29 @@ public class UserController {
 	}
 
 	@PutMapping("/update")
-	public ResponseEntity<UserResponseDto> updateUser(
-			@AuthenticationPrincipal UserPrincipal user,
-			@RequestBody UserRequestDto requestDto) {
-		UserResponseDto updatedUser = userService.updateUser(user.userId(), requestDto);
+	public ResponseEntity<UserResponseDto> updateUser(@RequestBody UserRequestDto requestDto) {
+		UserResponseDto updatedUser = userService.updateUser(requestDto);
 		return ResponseEntity.ok(updatedUser);
 	}
 
 	@DeleteMapping("/delete")
-	public ResponseEntity<Void> deleteUser(@AuthenticationPrincipal UserPrincipal user) {
-		userService.deleteUser(user.userId());
+	public ResponseEntity<Void> deleteUser() {
+		User user = (User) Objects.requireNonNull(SecurityContextHolder
+						.getContext()
+						.getAuthentication())
+				.getPrincipal();
+		assert user != null;
+		userService.deleteUser(user.getId());
 		return ResponseEntity.noContent().build();
 	}
 
 	@GetMapping("/me")
-	public ResponseEntity<UserResponseDto> getCurrentUser(@AuthenticationPrincipal UserPrincipal user) {
-		return ResponseEntity.ok(userService.getUserById(user.userId()));
+	public ResponseEntity<UserResponseDto> getCurrentUser() {
+		User user = (User) Objects.requireNonNull(SecurityContextHolder
+						.getContext()
+						.getAuthentication())
+				.getPrincipal();
+		assert user != null;
+		return ResponseEntity.ok(UserResponseDto.fromEntity(user));
 	}
 }
