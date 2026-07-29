@@ -1,0 +1,133 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  CloudFront distribution over syncbeat-audio with Origin Access Control
+  (OAC-only bucket access) and a trusted key group for signed URLs.
+
+Parameters:
+  BucketName:
+    Type: String
+    Default: syncbeat-audio
+  PublicKeyPEM:
+    Type: String
+    Description: PEM-encoded RSA public key used to validate CloudFront signed URLs
+  CallerReference:
+    Type: String
+    Default: syncbeat-signing-key-v1
+    Description: Must change if you rotate the public key (CloudFront requires uniqueness)
+
+Resources:
+
+  ###############################################
+  # Origin Access Control
+  ###############################################
+  OriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: syncbeat-oac
+        Description: Restricts S3 origin access to this CloudFront distribution only
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  ###############################################
+  # Signed URL public key + key group
+  ###############################################
+  CloudFrontPublicKey:
+    Type: AWS::CloudFront::PublicKey
+    Properties:
+      PublicKeyConfig:
+        CallerReference: !Ref CallerReference
+        Name: syncbeat-signing-key
+        EncodedKey: !Ref PublicKeyPEM
+        Comment: Public key for backend-issued signed URLs (canned policy)
+
+  SigningKeyGroup:
+    Type: AWS::CloudFront::KeyGroup
+    Properties:
+      KeyGroupConfig:
+        Name: syncbeat-key-group
+        Items:
+          - !Ref CloudFrontPublicKey
+        Comment: Trusted key group required on the audio cache behavior
+
+  ###############################################
+  # Cache policy (avoids relying on AWS managed policy IDs, which
+  # aren't guaranteed to exist in LocalStack's mock account)
+  ###############################################
+  CachePolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        Name: syncbeat-cache-policy
+        DefaultTTL: 86400
+        MaxTTL: 31536000
+        MinTTL: 0
+        ParametersInCacheKeyAndForwardedToOrigin:
+          CookiesConfig:
+            CookieBehavior: none
+          HeadersConfig:
+            HeaderBehavior: none
+          QueryStringsConfig:
+            QueryStringBehavior: none
+          EnableAcceptEncodingGzip: true
+          EnableAcceptEncodingBrotli: true
+
+  ###############################################
+  # Distribution
+  ###############################################
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: syncbeat-audio-distribution
+        DefaultRootObject: ""
+        Origins:
+          - Id: s3-origin
+            DomainName: !Sub "${BucketName}.s3.amazonaws.com"
+            OriginAccessControlId: !GetAtt OriginAccessControl.Id
+            S3OriginConfig:
+              OriginAccessIdentity: ""
+        DefaultCacheBehavior:
+          TargetOriginId: s3-origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - GET
+            - HEAD
+          CachedMethods:
+            - GET
+            - HEAD
+          CachePolicyId: !Ref CachePolicy
+          TrustedKeyGroups:
+            - !Ref SigningKeyGroup
+
+  ###############################################
+  # Bucket policy: only this distribution may read the bucket
+  ###############################################
+  AudioBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref BucketName
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowCloudFrontServicePrincipalReadOnly
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub "arn:aws:s3:::${BucketName}/*"
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution.Id}"
+
+Outputs:
+  DistributionId:
+    Value: !GetAtt CloudFrontDistribution.Id
+  DistributionDomainName:
+    Value: !GetAtt CloudFrontDistribution.DomainName
+  KeyGroupId:
+    Value: !GetAtt SigningKeyGroup.Id
+  PublicKeyId:
+    Value: !GetAtt CloudFrontPublicKey.Id

@@ -3,7 +3,6 @@ package com.syncbeat.mainframe.syncbeatmainframe.config;
 import com.syncbeat.mainframe.syncbeatmainframe.models.User;
 import com.syncbeat.mainframe.syncbeatmainframe.repository.UserRepository;
 import com.syncbeat.mainframe.syncbeatmainframe.service.JWTService;
-import com.syncbeat.mainframe.syncbeatmainframe.service.UserService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
@@ -12,6 +11,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
@@ -65,7 +65,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 							response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
 							return;
 						}
-						var auth = new UsernamePasswordAuthenticationToken(principal, null, List.of());
+						var authorities = principal.getAdmin()
+								? List.of(new SimpleGrantedAuthority("ROLE_ADMIN"), new SimpleGrantedAuthority("ROLE_USER"))
+								: List.of(new SimpleGrantedAuthority("ROLE_USER"));
+						var auth = new UsernamePasswordAuthenticationToken(principal, null, authorities);
 						auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 						SecurityContextHolder.getContext().setAuthentication(auth);
 					} catch (IllegalArgumentException ignored) {

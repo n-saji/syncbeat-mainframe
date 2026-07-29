@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   localstack:
-    image: localstack/localstack:latest
+    image: localstack/localstack-pro:latest   # CloudFront/CloudFormation require the Pro image
     container_name: localstack
     ports:
       - "4566:4566"
@@ -11,10 +11,17 @@ services:
       AWS_ACCESS_KEY_ID: test
       AWS_SECRET_ACCESS_KEY: test
       DEBUG: 1
-      SERVICES: s3,sqs,sns
+      SERVICES: s3,sqs,sns,cloudformation,cloudfront
       LOCALSTACK_AUTH_TOKEN: ${LOCALSTACK_AUTH_TOKEN}
+      # AWS::CloudFront::PublicKey and AWS::CloudFront::KeyGroup have no
+      # real resource provider in LocalStack Pro yet -- CFN currently
+      # no-ops them with a warning, but that becomes a hard failure in
+      # future releases unless this is set explicitly.
+      CFN_IGNORE_UNSUPPORTED_RESOURCE_TYPES: 1
     volumes:
       - ./localstack/init.sh:/etc/localstack/init/ready.d/init.sh
+      - ./localstack/cloudformation:/etc/localstack/cloudformation
+      - ./localstack/keys:/etc/localstack/keys
       - localstack-data:/var/lib/localstack
       - /var/run/docker.sock:/var/run/docker.sock
     healthcheck:
