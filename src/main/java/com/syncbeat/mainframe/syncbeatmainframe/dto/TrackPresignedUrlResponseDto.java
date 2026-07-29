@@ -19,7 +19,7 @@ public class TrackPresignedUrlResponseDto {
 	@JsonProperty("presigned_url")
 	private String presignedUrl;
 
-	@JsonProperty("upload_path")
-	private String uploadPath;
+	@JsonProperty("s3_key")
+	private String s3Key;
 }
 

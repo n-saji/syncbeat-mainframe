@@ -15,12 +15,6 @@ import java.security.spec.PKCS8EncodedKeySpec;
 import java.time.Instant;
 import java.util.Base64;
 
-/**
- * Utility class for generating CloudFront signed URLs for secure content delivery.
- * Uses CloudFront key pairs for canned policy signing.
- *
- * Implements RSA-SHA1 signing compatible with CloudFront's URL signing requirements.
- */
 @Slf4j
 @Component
 public class CloudFrontUtilities {
@@ -37,15 +31,7 @@ public class CloudFrontUtilities {
 	@Value("${cloudfront.expiration-seconds:3600}")
 	private long expirationSeconds;
 
-	/**
-	 * Generates a signed CloudFront URL with a canned policy.
-	 * The URL will be valid for the specified expiration time.
-	 *
-	 * @param resourcePath The S3 path (e.g., "tracks/track-id/original.mp3")
-	 * @return A signed CloudFront URL
-	 * @throws IOException If the private key cannot be read
-	 * @throws Exception If URL signing fails
-	 */
+
 	public String getSignedUrlWithCannedPolicy(String resourcePath) throws IOException, Exception {
 		if (cloudFrontDomainName == null || cloudFrontDomainName.isEmpty()) {
 			throw new IllegalArgumentException("CloudFront domain name is not configured");
@@ -108,14 +94,7 @@ public class CloudFrontUtilities {
 		}
 	}
 
-	/**
-	 * Reads private key bytes from a file.
-	 * Handles both PEM-formatted and raw DER-formatted keys.
-	 *
-	 * @param keyPath Path to the private key file
-	 * @return Byte array of the key
-	 * @throws IOException If the file cannot be read
-	 */
+
 	private byte[] readPrivateKeyBytes(String keyPath) throws IOException {
 		byte[] keyBytes = Files.readAllBytes(Paths.get(keyPath));
 
@@ -135,27 +114,13 @@ public class CloudFrontUtilities {
 		return keyBytes;
 	}
 
-	/**
-	 * Loads a private key from DER-encoded bytes.
-	 *
-	 * @param keyBytes DER-encoded private key bytes
-	 * @return PrivateKey object
-	 * @throws Exception If the key cannot be loaded
-	 */
 	private PrivateKey loadPrivateKey(byte[] keyBytes) throws Exception {
 		PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(keyBytes);
 		KeyFactory keyFactory = KeyFactory.getInstance("RSA");
 		return keyFactory.generatePrivate(keySpec);
 	}
 
-	/**
-	 * Signs a policy string using RSA-SHA1.
-	 *
-	 * @param policyBytes The policy string as bytes
-	 * @param privateKey The private key to use for signing
-	 * @return Signature bytes
-	 * @throws Exception If signing fails
-	 */
+
 	private byte[] signPolicy(byte[] policyBytes, PrivateKey privateKey) throws Exception {
 		Signature signature = Signature.getInstance("SHA1withRSA");
 		signature.initSign(privateKey);
@@ -163,21 +128,12 @@ public class CloudFrontUtilities {
 		return signature.sign();
 	}
 
-	/**
-	 * Encodes the signature for use in a URL, using base64 URL-safe encoding.
-	 *
-	 * @param signatureBytes The raw signature bytes
-	 * @return URL-safe base64 encoded signature
-	 */
+
 	private String encodeSignature(byte[] signatureBytes) {
 		return Base64.getUrlEncoder().withoutPadding().encodeToString(signatureBytes);
 	}
 
-	/**
-	 * Gets the expiration timestamp for signed URLs.
-	 *
-	 * @return Unix timestamp (seconds since epoch)
-	 */
+
 	public long getExpirationTimestamp() {
 		return Instant.now().getEpochSecond() + expirationSeconds;
 	}

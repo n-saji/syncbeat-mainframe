@@ -8,9 +8,11 @@ import com.syncbeat.mainframe.syncbeatmainframe.repository.UserRepository;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Objects;
@@ -26,7 +28,7 @@ public class UserService {
 
 	public UserResponseDto createUser(UserRequestDto requestDto) {
 		if (requestDto.getEmail() != null && userRepository.existsByEmail(requestDto.getEmail())) {
-			throw new IllegalArgumentException("User with email " + requestDto.getEmail() + " already exists");
+			throw new ResponseStatusException(HttpStatus.CONFLICT, "User with email " + requestDto.getEmail() + " already exists");
 		}
 
 		String encodedPassword = null;
@@ -34,13 +36,15 @@ public class UserService {
 			encodedPassword = bCryptPasswordEncoder.encode(requestDto.getPassword());
 		}
 
+		// Public self-signup: admin/active are never taken from client input to
+		// prevent privilege escalation. New users are always non-admin and active.
 		User user = User.builder()
 				.firstName(requestDto.getFirstName())
 				.lastName(requestDto.getLastName())
 				.email(requestDto.getEmail())
 				.password(encodedPassword)
-				.admin(requestDto.getAdmin() != null && requestDto.getAdmin())
-				.active(requestDto.getActive() == null || requestDto.getActive())
+				.admin(false)
+				.active(true)
 				.build();
 
 		User savedUser = userRepository.save(user);
@@ -55,7 +59,7 @@ public class UserService {
 
 	public UserResponseDto getUserById(UUID id) {
 		User user = userRepository.findById(id)
-				.orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found with id: " + id));
 		return UserResponseDto.fromEntity(user);
 	}
 
@@ -75,7 +79,7 @@ public class UserService {
 		if (requestDto.getEmail() != null && !requestDto.getEmail().isEmpty() &&
 				existingUser.getEmail() != null && !existingUser.getEmail().equals(requestDto.getEmail())) {
 			if (userRepository.existsByEmail(requestDto.getEmail())) {
-				throw new IllegalArgumentException("User with email " + requestDto.getEmail() + " already exists");
+				throw new ResponseStatusException(HttpStatus.CONFLICT, "User with email " + requestDto.getEmail() + " already exists");
 			}
 			existingUser.setEmail(requestDto.getEmail());
 		}
@@ -89,7 +93,7 @@ public class UserService {
 
 	public void deleteUser(UUID id) {
 		if (!userRepository.existsById(id)) {
-			throw new RuntimeException("User not found with id: " + id);
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found with id: " + id);
 		}
 		userRepository.deleteById(id);
 	}
@@ -101,18 +105,18 @@ public class UserService {
 	public void verifyUserCredentials(AuthRequestDto authRequestDto) {
 		userRepository.findByEmail(authRequestDto.getEmail())
 				.filter(user -> bCryptPasswordEncoder.matches(authRequestDto.getPassword(), user.getPassword()))
-				.orElseThrow(() -> new RuntimeException("Invalid email or password"));
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password"));
 	}
 
 	public UserResponseDto getUserByEmail(@Email @NotBlank String email) {
 		User user = userRepository.findByEmail(email)
-				.orElseThrow(() -> new RuntimeException("User not found with email: " + email));
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found with email: " + email));
 		return UserResponseDto.fromEntity(user);
 	}
 
 	public boolean checkIfAdmin(UUID uuid) {
 		User user = userRepository.findById(uuid)
-				.orElseThrow(() -> new RuntimeException("User not found with id: " + uuid));
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found with id: " + uuid));
 		return user.getAdmin() != null && user.getAdmin();
 	}
 }

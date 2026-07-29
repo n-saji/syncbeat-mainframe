@@ -7,15 +7,12 @@ import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.S3Configuration;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import org.springframework.beans.factory.annotation.Value;
 
 import java.net.URI;
 
-/**
- * Configuration class for AWS services.
- * Sets up S3 client and presigner beans with support for LocalStack development.
- */
 @Slf4j
 @Configuration
 public class AwsConfig {
@@ -32,12 +29,6 @@ public class AwsConfig {
 	@Value("${spring.cloud.aws.endpoint:}")
 	private String awsEndpoint;
 
-	/**
-	 * Creates an S3Client bean configured with AWS credentials and region.
-	 * If an endpoint is configured (e.g., for LocalStack), it will override the default AWS endpoint.
-	 *
-	 * @return Configured S3Client
-	 */
 	@Bean
 	public S3Client s3Client() {
 		log.info("Configuring S3 client for region: {}", awsRegion);
@@ -50,18 +41,17 @@ public class AwsConfig {
 
 		if (awsEndpoint != null && !awsEndpoint.isEmpty()) {
 			log.info("Using custom S3 endpoint: {}", awsEndpoint);
-			builder.endpointOverride(URI.create(awsEndpoint));
+			builder.endpointOverride(URI.create(awsEndpoint))
+					// Virtual-hosted-style (bucket-as-subdomain) addressing isn't reliably
+					// resolved against LocalStack's *.localhost host — force path-style
+					// (bucket in the URL path) whenever we're pointed at a custom endpoint.
+					// Real AWS (no endpoint override) keeps the SDK default.
+					.serviceConfiguration(S3Configuration.builder().pathStyleAccessEnabled(true).build());
 		}
 
 		return builder.build();
 	}
 
-	/**
-	 * Creates an S3Presigner bean for generating presigned URLs.
-	 * Uses the same credentials and endpoint configuration as the S3Client.
-	 *
-	 * @return Configured S3Presigner
-	 */
 	@Bean
 	public S3Presigner s3Presigner() {
 		log.info("Configuring S3 Presigner");
@@ -74,7 +64,8 @@ public class AwsConfig {
 
 		if (awsEndpoint != null && !awsEndpoint.isEmpty()) {
 			log.info("Using custom S3 presigner endpoint: {}", awsEndpoint);
-			builder.endpointOverride(URI.create(awsEndpoint));
+			builder.endpointOverride(URI.create(awsEndpoint))
+					.serviceConfiguration(S3Configuration.builder().pathStyleAccessEnabled(true).build());
 		}
 
 		return builder.build();

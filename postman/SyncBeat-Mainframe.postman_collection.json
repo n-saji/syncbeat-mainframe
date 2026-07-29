@@ -1,0 +1,355 @@
+{
+  "info": {
+    "name": "SyncBeat Mainframe",
+    "description": "All REST APIs exposed by syncbeat-mainframe. Auth is cookie-based (access_token/refresh_token, httpOnly + secure) — Postman's cookie jar picks these up automatically after /auth/login as long as requests stay on the same {{base_url}} domain, so you don't need to manually set an Authorization header. Requests that create a resource save its id into the environment (e.g. {{room_id}}, {{track_id}}, {{playlist_id}}) via a small test script so later requests in the flow can chain off it.\n\nSuggested run order for a full smoke test: Auth > Register -> Auth > Login -> Rooms > Create Room -> Tracks > Create Track (as admin) -> Tracks > Get Presigned Upload URL -> (upload the file yourself with the returned URL) -> Tracks > Update S3 Key -> Tracks > Get Stream URL -> Rooms > Join Room -> Playlists > Create Playlist -> Playlists > Add Tracks -> Rooms > Leave Room.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8080" },
+    { "key": "user_id", "value": "" },
+    { "key": "admin_user_id", "value": "" },
+    { "key": "room_id", "value": "" },
+    { "key": "track_id", "value": "" },
+    { "key": "playlist_id", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Ada\",\n  \"last_name\": \"Lovelace\",\n  \"email\": \"ada@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/users/create", "host": ["{{base_url}}"], "path": ["api", "users", "create"] },
+            "description": "Public signup. `is_admin`/`is_active` are always forced server-side (admin=false, active=true) regardless of what's sent here — that's a deliberate fix, not a bug: this endpoint used to trust a client-supplied is_admin flag."
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "if (pm.response.code === 201) {",
+              "    const body = pm.response.json();",
+              "    pm.environment.set('user_id', body.id);",
+              "}"
+            ]}
+          }]
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"ada@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/auth/login", "host": ["{{base_url}}"], "path": ["api", "auth", "login"] },
+            "description": "Sets access_token (15min) and refresh_token (7d) as httpOnly cookies."
+          }
+        },
+        {
+          "name": "Refresh",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{base_url}}/api/auth/refresh", "host": ["{{base_url}}"], "path": ["api", "auth", "refresh"] },
+            "description": "Uses the refresh_token cookie to mint a new access/refresh pair. Call this once the access token expires instead of logging in again."
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{base_url}}/api/auth/logout", "host": ["{{base_url}}"], "path": ["api", "auth", "logout"] },
+            "description": "Clears both cookies."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get Current User (me)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/users/me", "host": ["{{base_url}}"], "path": ["api", "users", "me"] }
+          }
+        },
+        {
+          "name": "Get All Users (admin only)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/users/all", "host": ["{{base_url}}"], "path": ["api", "users", "all"] }
+          }
+        },
+        {
+          "name": "Get User By Id (admin only)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/users/{{user_id}}", "host": ["{{base_url}}"], "path": ["api", "users", "{{user_id}}"] }
+          }
+        },
+        {
+          "name": "Update Current User",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Ada\",\n  \"last_name\": \"Byron\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/users/update", "host": ["{{base_url}}"], "path": ["api", "users", "update"] }
+          }
+        },
+        {
+          "name": "Delete Current User",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{base_url}}/api/users/delete", "host": ["{{base_url}}"], "path": ["api", "users", "delete"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Rooms",
+      "item": [
+        {
+          "name": "Create Room",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Friday Jam\",\n  \"is_public\": true\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/rooms/create", "host": ["{{base_url}}"], "path": ["api", "rooms", "create"] }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "if (pm.response.code === 200) {",
+              "    const body = pm.response.json();",
+              "    pm.environment.set('room_id', body.id);",
+              "}"
+            ]}
+          }]
+        },
+        {
+          "name": "Get Room By Id",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/rooms/{{room_id}}", "host": ["{{base_url}}"], "path": ["api", "rooms", "{{room_id}}"] },
+            "description": "Returns the Postgres room row plus its live redis `state` (members, host, playback position) when there's an active session, or null state if the room hasn't been joined / its redis TTL expired."
+          }
+        },
+        {
+          "name": "Update Room",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Friday Jam (renamed)\",\n  \"is_public\": false,\n  \"is_active\": true\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/rooms/update/{{room_id}}", "host": ["{{base_url}}"], "path": ["api", "rooms", "update", "{{room_id}}"] }
+          }
+        },
+        {
+          "name": "Delete Room",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{base_url}}/api/rooms/delete/{{room_id}}", "host": ["{{base_url}}"], "path": ["api", "rooms", "delete", "{{room_id}}"] }
+          }
+        },
+        {
+          "name": "My Rooms",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/rooms/my-rooms", "host": ["{{base_url}}"], "path": ["api", "rooms", "my-rooms"] }
+          }
+        },
+        {
+          "name": "All Rooms For User",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/rooms/user/{{user_id}}/all", "host": ["{{base_url}}"], "path": ["api", "rooms", "user", "{{user_id}}", "all"] }
+          }
+        },
+        {
+          "name": "Join Room",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{base_url}}/api/rooms/{{room_id}}/join", "host": ["{{base_url}}"], "path": ["api", "rooms", "{{room_id}}", "join"] }
+          }
+        },
+        {
+          "name": "Leave Room",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{base_url}}/api/rooms/{{room_id}}/leave", "host": ["{{base_url}}"], "path": ["api", "rooms", "{{room_id}}", "leave"] },
+            "description": "If you were the host and other members remain, a new host is picked automatically. If you were the last member, the room's live redis state is cleared."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tracks",
+      "item": [
+        {
+          "name": "Create Track (admin only)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Clair de Lune\",\n  \"artist\": \"Debussy\",\n  \"duration_ms\": 300000\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/v1/tracks", "host": ["{{base_url}}"], "path": ["api", "v1", "tracks"] },
+            "description": "Requires the logged-in user to have is_admin=true. Track is created without an s3_key — upload happens after, via the presigned URL flow below."
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "if (pm.response.code === 201) {",
+              "    const body = pm.response.json();",
+              "    pm.environment.set('track_id', body.id);",
+              "}"
+            ]}
+          }]
+        },
+        {
+          "name": "List All Tracks",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/v1/tracks", "host": ["{{base_url}}"], "path": ["api", "v1", "tracks"] }
+          }
+        },
+        {
+          "name": "Get Track By Id",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/v1/tracks/{{track_id}}", "host": ["{{base_url}}"], "path": ["api", "v1", "tracks", "{{track_id}}"] }
+          }
+        },
+        {
+          "name": "Get Presigned Upload URL (admin only)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/v1/tracks/{{track_id}}/presigned-url", "host": ["{{base_url}}"], "path": ["api", "v1", "tracks", "{{track_id}}", "presigned-url"] },
+            "description": "Response has two fields — presigned_url and s3_key. Only presigned_url is a URL: PUT the raw mp3 bytes to that exact string (with header Content-Type: audio/mpeg), unmodified, in a separate request. s3_key (e.g. \"tracks/{id}/original.mp3\") is just the resulting object key for your reference/for the next step — it is NOT a path to request against anything; treating it as a URL produces a NoSuchBucket error (LocalStack reads its first segment, \"tracks\", as the bucket name)."
+          }
+        },
+        {
+          "name": "Update Track S3 Key (admin only)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"s3_key\": \"tracks/{{track_id}}/original.mp3\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/v1/tracks/{{track_id}}/s3-key", "host": ["{{base_url}}"], "path": ["api", "v1", "tracks", "{{track_id}}", "s3-key"] },
+            "description": "Call after the file has actually been uploaded via the presigned URL."
+          }
+        },
+        {
+          "name": "Get Stream URL",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/v1/tracks/{{track_id}}/stream-url", "host": ["{{base_url}}"], "path": ["api", "v1", "tracks", "{{track_id}}", "stream-url"] },
+            "description": "Returns 409 if the track has no s3_key yet (upload not completed)."
+          }
+        },
+        {
+          "name": "Delete Track (admin only)",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{base_url}}/api/v1/tracks/{{track_id}}", "host": ["{{base_url}}"], "path": ["api", "v1", "tracks", "{{track_id}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Playlists",
+      "item": [
+        {
+          "name": "Create Playlist",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Chill Mix\",\n  \"track_ids\": []\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/v1/playlists", "host": ["{{base_url}}"], "path": ["api", "v1", "playlists"] }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "if (pm.response.code === 201) {",
+              "    const body = pm.response.json();",
+              "    pm.environment.set('playlist_id', body.id);",
+              "}"
+            ]}
+          }]
+        },
+        {
+          "name": "List My Playlists",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/v1/playlists", "host": ["{{base_url}}"], "path": ["api", "v1", "playlists"] }
+          }
+        },
+        {
+          "name": "Get Playlist With Tracks",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/v1/playlists/{{playlist_id}}", "host": ["{{base_url}}"], "path": ["api", "v1", "playlists", "{{playlist_id}}"] }
+          }
+        },
+        {
+          "name": "Add Tracks To Playlist",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"track_ids\": [\"{{track_id}}\"]\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/v1/playlists/{{playlist_id}}/tracks", "host": ["{{base_url}}"], "path": ["api", "v1", "playlists", "{{playlist_id}}", "tracks"] }
+          }
+        },
+        {
+          "name": "Remove Track From Playlist",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{base_url}}/api/v1/playlists/{{playlist_id}}/tracks/{{track_id}}", "host": ["{{base_url}}"], "path": ["api", "v1", "playlists", "{{playlist_id}}", "tracks", "{{track_id}}"] }
+          }
+        },
+        {
+          "name": "Update Playlist Name",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Chill Mix (Vol. 2)\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/v1/playlists/{{playlist_id}}", "host": ["{{base_url}}"], "path": ["api", "v1", "playlists", "{{playlist_id}}"] }
+          }
+        },
+        {
+          "name": "Delete Playlist",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{base_url}}/api/v1/playlists/{{playlist_id}}", "host": ["{{base_url}}"], "path": ["api", "v1", "playlists", "{{playlist_id}}"] }
+          }
+        }
+      ]
+    }
+  ]
+}

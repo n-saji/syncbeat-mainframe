@@ -79,7 +79,6 @@ public class JWTService {
 				.getPayload();
 	}
 
-	/** Expecting only access token **/
 	public String getSubjectFromToken(@NotNull String accessToken){
 		Claims claims = Jwts.parser()
 				.verifyWith(secretKey)
@@ -88,6 +87,14 @@ public class JWTService {
 				.getPayload();
 
 		if (claims.get(TOKEN_TYPE).equals(ACCESS)) {
+			return claims.getSubject();
+		}
+		return null;
+	}
+
+	public String getSubjectFromRefreshToken(@NotNull String refreshToken) {
+		Claims claims = extractClaims(refreshToken);
+		if (claims.get(TOKEN_TYPE).equals(REFRESH)) {
 			return claims.getSubject();
 		}
 		return null;

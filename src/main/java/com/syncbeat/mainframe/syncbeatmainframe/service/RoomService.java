@@ -47,9 +47,14 @@ public class RoomService {
 		}catch(IllegalArgumentException e){
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid room id");
 		}
-		return RoomResponseDto.fromEntity(roomRepository.findById(id)
-				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Room not found")));
+		Room room = roomRepository.findById(id)
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Room not found"));
 
+		// Attach live redis state when there's an active listening session; a room
+		// can legitimately exist in Postgres with no live state (never started, or
+		// its redis TTL expired), so this is best-effort, not a failure.
+		RedisRoomDto state = redisService.tryGetRoom(roomId).orElse(null);
+		return RoomResponseDto.fromEntity(room, state);
 	}
 
 	public RoomResponseDto updateRoom(String roomId,
@@ -65,7 +70,6 @@ public class RoomService {
 				roomRepository.findById(id)
 						.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Room not found"));
 
-		System.out.println(getCurrentUser().getId()+" gggg "+existingRoom.getCreatedBy().getId());
 		if(!existingRoom.getCreatedBy().getId().equals(getCurrentUser().getId())) {
 			throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not authorized to update this room");
 		}
@@ -140,11 +144,8 @@ public class RoomService {
 	}
 
 	public void leaveRoom(String roomId) {
-//		handle removal of user from redis
-//		if host leaves, handle the logic of new host election
-		redisService.removeMember(roomId,getCurrentUser().getId().toString());
-//		TODO: handle host assignment, if host left
-//	    TODO: if room empty, delete room from redis
-
+		// Removes the user from the redis member set; RedisService also handles
+		// host re-election and cleaning up the room state if it's now empty.
+		redisService.removeMember(roomId, getCurrentUser().getId().toString());
 	}
 }

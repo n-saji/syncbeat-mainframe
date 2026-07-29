@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS tracks
     id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     title       VARCHAR(255)        NOT NULL,
     artist      VARCHAR(255)        NOT NULL,
-    s3_key      VARCHAR(255)        NOT NULL,
+    s3_key      VARCHAR(255),
     duration_ms   INTEGER             NOT NULL,
     created_at timestamp        DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp        DEFAULT CURRENT_TIMESTAMP

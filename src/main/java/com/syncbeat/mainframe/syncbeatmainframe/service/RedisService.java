@@ -12,6 +12,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 @Service
@@ -47,19 +48,26 @@ public class RedisService {
 
 	public RedisRoomDto getRoom(String roomId) {
 		List<Object> results = redisTemplate.executePipelined((RedisCallback<Object>) connection -> {
-			connection.hGetAll(hashKey(roomId).getBytes());
-			connection.sMembers(membersKey(roomId).getBytes());
+			connection.hashCommands().hGetAll(hashKey(roomId).getBytes());
+			connection.setCommands().sMembers(membersKey(roomId).getBytes());
 			return null;
 		});
 
 		@SuppressWarnings("unchecked")
 		Map<Object, Object> hash = (Map<Object, Object>) results.get(0);
 		if (hash == null || hash.isEmpty()) {
-			throw new RuntimeException("Room not found");
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Room not found: " + roomId);
 		}
 		@SuppressWarnings("unchecked")
 		Set<Object> members = (Set<Object>) results.get(1);
 		return RedisRoomDto.fromRedis(roomId, hash, members);
+	}
+
+	public Optional<RedisRoomDto> tryGetRoom(String roomId) {
+		if (Boolean.FALSE.equals(redisTemplate.hasKey(hashKey(roomId)))) {
+			return Optional.empty();
+		}
+		return Optional.of(getRoom(roomId));
 	}
 
 	public RedisRoomDto addMember(String roomId, String userId) {
@@ -68,11 +76,25 @@ public class RedisService {
 		return getRoom(roomId);
 	}
 
-	/** Returns true if the room is now empty (caller may want to trigger cleanup / HOST_CHANGED). */
-	public boolean removeMember(String roomId, String userId) {
-		redisTemplate.opsForSet().remove(membersKey(roomId), userId);
-		Long remaining = redisTemplate.opsForSet().size(membersKey(roomId));
-		return remaining == null || remaining == 0;
+	public void removeMember(String roomId, String userId) {
+		String hash = hashKey(roomId);
+		String membersKey = membersKey(roomId);
+
+		redisTemplate.opsForSet().remove(membersKey, userId);
+		Set<String> remaining = redisTemplate.opsForSet().members(membersKey);
+
+		if (remaining == null || remaining.isEmpty()) {
+			redisTemplate.delete(hash);
+			redisTemplate.delete(membersKey);
+			return;
+		}
+
+		Object currentHostId = redisTemplate.opsForHash().get(hash, "hostId");
+		if (userId.equals(currentHostId)) {
+			String newHostId = remaining.iterator().next();
+			redisTemplate.opsForHash().put(hash, "hostId", newHostId);
+			redisTemplate.opsForHash().put(hash, "updatedAt", Instant.now().toString());
+		}
 	}
 
 	private void assertRoomExists(String roomId) {

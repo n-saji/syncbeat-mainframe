@@ -11,10 +11,7 @@ import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignReques
 import java.time.Duration;
 import java.util.UUID;
 
-/**
- * Service for handling S3 operations including presigned URLs generation
- * for uploading and downloading objects.
- */
+
 @Slf4j
 @Service
 public class S3Service {
@@ -31,13 +28,6 @@ public class S3Service {
 		this.s3Presigner = s3Presigner;
 	}
 
-	/**
-	 * Generates a presigned URL for uploading a track to S3.
-	 * The URL will be valid for the configured expiration time.
-	 *
-	 * @param trackId The UUID of the track
-	 * @return A presigned URL that can be used to upload the track
-	 */
 	public String generatePresignedUploadUrl(UUID trackId) {
 		String s3Key = String.format("tracks/%s/original.mp3", trackId);
 
@@ -62,14 +52,7 @@ public class S3Service {
 		}
 	}
 
-	/**
-	 * Generates a presigned URL for downloading/streaming a track from S3.
-	 * This is primarily used for testing purposes; production streaming
-	 * should use CloudFront signed URLs instead.
-	 *
-	 * @param s3Key The S3 key of the object
-	 * @return A presigned URL that can be used to download the object
-	 */
+
 	public String generatePresignedDownloadUrl(String s3Key) {
 		try {
 			GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
@@ -86,12 +69,6 @@ public class S3Service {
 		}
 	}
 
-	/**
-	 * Constructs the S3 key for a track.
-	 *
-	 * @param trackId The UUID of the track
-	 * @return The S3 key in format "tracks/{trackId}/original.mp3"
-	 */
 	public String getTrackS3Key(UUID trackId) {
 		return String.format("tracks/%s/original.mp3", trackId);
 	}
