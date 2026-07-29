@@ -1,10 +1,13 @@
 package com.syncbeat.mainframe.syncbeatmainframe.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.util.UUID;
 
 @Data
 @NoArgsConstructor
@@ -13,8 +16,7 @@ import lombok.NoArgsConstructor;
 public class RoomRequestDto {
 	private String name;
 	@JsonProperty("is_public")
-	private boolean isPublic;
+	private Boolean isPublic;
 	@JsonProperty("is_active")
-	private boolean active = true;
-	// created by would be explicitly found from jwt
+	private Boolean isActive;
 }
