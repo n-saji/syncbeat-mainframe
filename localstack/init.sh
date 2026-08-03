@@ -118,6 +118,64 @@ HISTORY_QUEUE_ARN=$(awslocal sqs get-queue-attributes \
     --query Attributes.QueueArn \
     --output text)
 
+SYNC_DLQ_ARN=$(awslocal sqs get-queue-attributes \
+    --queue-url "$SYNC_DLQ_URL" \
+    --attribute-names QueueArn \
+    --query Attributes.QueueArn \
+    --output text)
+
+ANALYTICS_DLQ_ARN=$(awslocal sqs get-queue-attributes \
+    --queue-url "$ANALYTICS_DLQ_URL" \
+    --attribute-names QueueArn \
+    --query Attributes.QueueArn \
+    --output text)
+
+HISTORY_DLQ_ARN=$(awslocal sqs get-queue-attributes \
+    --queue-url "$HISTORY_DLQ_URL" \
+    --attribute-names QueueArn \
+    --query Attributes.QueueArn \
+    --output text)
+
+###############################################
+# Redrive Policies (source queue -> its DLQ)
+###############################################
+# Without this, a message that keeps failing just keeps retrying forever after each
+# visibility timeout - it never actually reaches the DLQ despite one existing.
+
+configure_redrive() {
+QUEUE_URL=$1
+DLQ_ARN=$2
+ATTR_FILE=$(mktemp)
+
+# Same reasoning as create_policy() below: build the (doubly-JSON-encoded) attribute
+# value with python3 rather than hand-escaped bash/CLI shorthand.
+python3 - "$DLQ_ARN" "$ATTR_FILE" <<'PYEOF'
+import json, sys
+
+dlq_arn, out_path = sys.argv[1], sys.argv[2]
+
+redrive_policy = {
+    "deadLetterTargetArn": dlq_arn,
+    "maxReceiveCount": "5",
+}
+
+with open(out_path, "w") as f:
+    json.dump({"RedrivePolicy": json.dumps(redrive_policy)}, f)
+PYEOF
+
+awslocal sqs set-queue-attributes \
+    --queue-url "$QUEUE_URL" \
+    --attributes "file://$ATTR_FILE"
+
+rm -f "$ATTR_FILE"
+}
+
+echo "Configuring redrive policies..."
+
+configure_redrive "$SYNC_QUEUE_URL" "$SYNC_DLQ_ARN"
+configure_redrive "$ANALYTICS_QUEUE_URL" "$ANALYTICS_DLQ_ARN"
+configure_redrive "$HISTORY_QUEUE_URL" "$HISTORY_DLQ_ARN"
+
 ###############################################
 # Queue Policies
 ###############################################
@@ -287,7 +345,7 @@ echo "  sync-queue.fifo"
 echo "  analytics-queue.fifo"
 echo "  activity-log-queue.fifo"
 echo ""
-echo "DLQs:"
+echo "DLQs (maxReceiveCount=5):"
 echo "  sync-queue-dlq.fifo"
 echo "  analytics-queue-dlq.fifo"
 echo "  activity-log-queue-dlq.fifo"

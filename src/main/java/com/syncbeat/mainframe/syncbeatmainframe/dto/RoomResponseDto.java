@@ -29,6 +29,11 @@ public class RoomResponseDto {
 	private LocalDateTime updatedAt;
 	@JsonProperty("state")
 	private RedisRoomDto state;
+	// The room's current live host, resolved server-side from state.host_id - which drifts
+	// from `created_by` once a host re-election happens (the original creator leaving hands
+	// hosting to another member). Null when there's no live session to resolve a host from.
+	@JsonProperty("current_host")
+	private UserResponseDto currentHost;
 
 	public static RoomResponseDto fromEntity(Room room) {
 		if (room == null) return null;

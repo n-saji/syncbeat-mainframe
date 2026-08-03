@@ -24,6 +24,8 @@ public class RedisRoomDto {
 	private String roomType;
 	@JsonProperty("host_id")
 	private String hostId;
+	@JsonProperty("track_id")
+	private String trackId;
 	@JsonProperty("position_ms")
 	private Long positionMs;
 	@JsonProperty("is_playing")
@@ -35,11 +37,13 @@ public class RedisRoomDto {
 
 	public static RedisRoomDto fromRedis(String roomId,
 	                                     Map<Object, Object>  hash, Set<Object> members) {
+		String trackId = (String) hash.get("trackId");
 		return  RedisRoomDto.builder()
 				.roomId(roomId)
 				.roomName((String) hash.get("roomName"))
 				.roomType((String) hash.get("roomType"))
 				.hostId((String) hash.get("hostId"))
+				.trackId(trackId == null || trackId.isEmpty() ? null : trackId)
 				.positionMs(Long.parseLong((String) hash.get("positionMs")))
 				.isPlaying(Boolean.parseBoolean((String) hash.get("isPlaying")))
 				.members(members.stream().map(m -> m != null ? m.toString() : null).toList())

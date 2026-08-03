@@ -59,6 +59,12 @@ public class RoomController {
 		return ResponseEntity.ok(rooms);
 	}
 
+	@GetMapping("/public")
+	public ResponseEntity<List<RoomResponseDto>> getPublicRooms() {
+		List<RoomResponseDto> rooms = roomService.getPublicRooms();
+		return ResponseEntity.ok(rooms);
+	}
+
 	@PostMapping("/{id}/join")
 	public ResponseEntity<RoomResponseDto> joinRoom(@PathVariable String id) {
 		RoomResponseDto resp = roomService.joinRoom(id);

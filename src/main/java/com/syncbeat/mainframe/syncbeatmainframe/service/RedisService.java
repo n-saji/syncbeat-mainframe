@@ -1,7 +1,9 @@
 package com.syncbeat.mainframe.syncbeatmainframe.service;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.syncbeat.mainframe.syncbeatmainframe.dto.RedisRoomDto;
 import com.syncbeat.mainframe.syncbeatmainframe.dto.RoomResponseDto;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
@@ -15,6 +17,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class RedisService {
@@ -22,6 +25,10 @@ public class RedisService {
 	private static final String ROOM_HASH = "room:%s:state";
 	private static final String ROOM_MEMBERS = "room:%s:members";
 	private static final Duration ROOM_TTL = Duration.ofHours(6);
+
+	// See PlaybackEventPublisher for why this is a locally-owned Jackson 2 mapper rather than
+	// the auto-configured Jackson 3 bean.
+	private final ObjectMapper objectMapper = new ObjectMapper();
 
 	private String hashKey(String roomId) { return ROOM_HASH.formatted(roomId); }
 	private String membersKey(String roomId) { return ROOM_MEMBERS.formatted(roomId); }
@@ -76,6 +83,18 @@ public class RedisService {
 		return getRoom(roomId);
 	}
 
+	// removeMember tears down a room's live state entirely once its last member leaves
+	// (see below) - so a room that emptied out and is now being rejoined has nothing in
+	// Redis to add a member to. Reseed it from the Postgres row (the source of truth for
+	// room_id/name/type/host) exactly like a fresh saveRoom, but only if it's actually
+	// missing - never stomp on a still-live room's track/position/is_playing.
+	public void ensureRoomState(RoomResponseDto room) {
+		if (Boolean.TRUE.equals(redisTemplate.hasKey(hashKey(room.getId().toString())))) {
+			return;
+		}
+		saveRoom(room);
+	}
+
 	public void removeMember(String roomId, String userId) {
 		String hash = hashKey(roomId);
 		String membersKey = membersKey(roomId);
@@ -94,6 +113,21 @@ public class RedisService {
 			String newHostId = remaining.iterator().next();
 			redisTemplate.opsForHash().put(hash, "hostId", newHostId);
 			redisTemplate.opsForHash().put(hash, "updatedAt", Instant.now().toString());
+			// Per the design doc this should be a HOST_CHANGED event through SNS/SQS/sync-service
+			// like every other state transition; it's a direct Redis write + broadcast instead,
+			// which is out of step with that architecture but the pragmatic fix for the actual bug:
+			// without this, already-connected clients never learn the host changed until some
+			// unrelated action happens to re-broadcast state, so a live host badge would go stale.
+			broadcastState(roomId);
+		}
+	}
+
+	private void broadcastState(String roomId) {
+		try {
+			RedisRoomDto state = getRoom(roomId);
+			redisTemplate.convertAndSend("room:" + roomId, objectMapper.writeValueAsString(state));
+		} catch (Exception e) {
+			log.warn("Failed to broadcast state for room {}", roomId, e);
 		}
 	}
 

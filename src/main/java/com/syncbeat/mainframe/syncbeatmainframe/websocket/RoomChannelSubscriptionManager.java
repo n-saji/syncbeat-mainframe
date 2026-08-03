@@ -7,6 +7,7 @@ import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -43,5 +44,12 @@ public class RoomChannelSubscriptionManager {
 
 	private ChannelTopic channelTopic(String roomId) {
 		return new ChannelTopic("room:" + roomId);
+	}
+
+	// Rooms this instance currently has at least one local STOMP subscriber for - the
+	// SYNC_PULSE scheduler uses this to only pulse rooms someone is actually listening to
+	// (syncbeat-service-breakdown.md, "the sync-pulse specifically").
+	public Set<String> activeRoomIds() {
+		return Set.copyOf(localSubscriberCounts.keySet());
 	}
 }

@@ -4,6 +4,7 @@ import com.syncbeat.mainframe.syncbeatmainframe.dto.RedisRoomDto;
 import com.syncbeat.mainframe.syncbeatmainframe.dto.RoomCreationRequestDto;
 import com.syncbeat.mainframe.syncbeatmainframe.dto.RoomRequestDto;
 import com.syncbeat.mainframe.syncbeatmainframe.dto.RoomResponseDto;
+import com.syncbeat.mainframe.syncbeatmainframe.dto.UserResponseDto;
 import com.syncbeat.mainframe.syncbeatmainframe.models.Room;
 import com.syncbeat.mainframe.syncbeatmainframe.models.User;
 import com.syncbeat.mainframe.syncbeatmainframe.repository.RoomRepository;
@@ -54,7 +55,23 @@ public class RoomService {
 		// can legitimately exist in Postgres with no live state (never started, or
 		// its redis TTL expired), so this is best-effort, not a failure.
 		RedisRoomDto state = redisService.tryGetRoom(roomId).orElse(null);
-		return RoomResponseDto.fromEntity(room, state);
+		RoomResponseDto resp = RoomResponseDto.fromEntity(room, state);
+		resp.setCurrentHost(resolveHost(state));
+		return resp;
+	}
+
+	// state.host_id can point at a different user than room.created_by once a host
+	// re-election has happened (see RedisService.removeMember) - resolve it here rather
+	// than making every caller do this UUID lookup themselves.
+	private UserResponseDto resolveHost(RedisRoomDto state) {
+		if (state == null || state.getHostId() == null) return null;
+		try {
+			return userRepository.findById(UUID.fromString(state.getHostId()))
+					.map(UserResponseDto::fromEntity)
+					.orElse(null);
+		} catch (IllegalArgumentException e) {
+			return null;
+		}
 	}
 
 	public RoomResponseDto updateRoom(String roomId,
@@ -127,15 +144,35 @@ public class RoomService {
 				.toList();
 	}
 
+	public List<RoomResponseDto> getPublicRooms() {
+		return roomRepository.findDiscoverablePublicRooms(getCurrentUser()).stream()
+				.map(room -> {
+					RedisRoomDto state = redisService.tryGetRoom(room.getId().toString()).orElse(null);
+					RoomResponseDto resp = RoomResponseDto.fromEntity(room, state);
+					resp.setCurrentHost(resolveHost(state));
+					return resp;
+				})
+				.toList();
+	}
+
 	public RoomResponseDto joinRoom(String roomId) {
 
 		try {
 			UUID roomID;
 			roomID = UUID.fromString(roomId);
-			RedisRoomDto resp = redisService.addMember(roomId,
+			Room room = roomRepository.findById(roomID)
+					.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Room not found"));
+
+			// A room that emptied out (last member's WS disconnect tore down its Redis
+			// state) has nothing for addMember to attach to - reseed it from Postgres
+			// before joining, rather than 404ing on a room that legitimately still exists.
+			redisService.ensureRoomState(RoomResponseDto.fromEntity(room));
+
+			RedisRoomDto state = redisService.addMember(roomId,
 					getCurrentUser().getId().toString());
-			return RoomResponseDto.
-					fromEntity(roomRepository.findById(roomID).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Room not found")), resp);
+			RoomResponseDto resp = RoomResponseDto.fromEntity(room, state);
+			resp.setCurrentHost(resolveHost(state));
+			return resp;
 		}
 		catch(IllegalArgumentException e){
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid room id");
