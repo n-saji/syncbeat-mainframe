@@ -1,13 +1,11 @@
 package com.syncbeat.mainframe.syncbeatmainframe.service;
 
 import com.syncbeat.mainframe.syncbeatmainframe.dto.TokenResponseDto;
-import com.syncbeat.mainframe.syncbeatmainframe.repository.UserRepository;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import jakarta.validation.constraints.NotNull;
-import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;

@@ -1,14 +1,12 @@
 package com.syncbeat.mainframe.syncbeatmainframe.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.syncbeat.mainframe.syncbeatmainframe.models.Room;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -44,7 +42,7 @@ public class RedisRoomDto {
 				.hostId((String) hash.get("hostId"))
 				.positionMs(Long.parseLong((String) hash.get("positionMs")))
 				.isPlaying(Boolean.parseBoolean((String) hash.get("isPlaying")))
-				.members(members.stream().map(Object::toString).toList())
+				.members(members.stream().map(m -> m != null ? m.toString() : null).toList())
 				.updatedAt(Instant.parse((String) hash.get("updatedAt")))
 				.build();
 
