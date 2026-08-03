@@ -132,6 +132,13 @@
             <version>0.13.0</version>
             <scope>runtime</scope>
         </dependency>
+        <!-- RedisService/PlaybackEventPublisher each own a plain (unconfigured-by-Spring) Jackson 2
+             ObjectMapper - see their comments for why. A bare `new ObjectMapper()` has no idea how
+             to serialize java.time types without this module explicitly registered. -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>

@@ -1,5 +1,6 @@
 package com.syncbeat.mainframe.syncbeatmainframe.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.syncbeat.mainframe.syncbeatmainframe.dto.RedisRoomDto;
 import com.syncbeat.mainframe.syncbeatmainframe.dto.RoomResponseDto;
 import lombok.RequiredArgsConstructor;
@@ -27,8 +28,10 @@ public class RedisService {
 	private static final Duration ROOM_TTL = Duration.ofHours(6);
 
 	// See PlaybackEventPublisher for why this is a locally-owned Jackson 2 mapper rather than
-	// the auto-configured Jackson 3 bean.
-	private final ObjectMapper objectMapper = new ObjectMapper();
+	// the auto-configured Jackson 3 bean. RedisRoomDto.updatedAt is an Instant, and a bare
+	// ObjectMapper doesn't know how to serialize java.time types without this registered -
+	// broadcastState() was silently failing (caught, logged, swallowed) on every call without it.
+	private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
 	private String hashKey(String roomId) { return ROOM_HASH.formatted(roomId); }
 	private String membersKey(String roomId) { return ROOM_MEMBERS.formatted(roomId); }

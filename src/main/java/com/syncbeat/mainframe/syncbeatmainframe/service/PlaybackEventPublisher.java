@@ -2,6 +2,7 @@ package com.syncbeat.mainframe.syncbeatmainframe.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.syncbeat.mainframe.syncbeatmainframe.dto.PlaybackEventDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,7 +21,9 @@ public class PlaybackEventPublisher {
 	// Jackson bean is Jackson 3 (tools.jackson.databind.json.JsonMapper), a separate
 	// API from com.fasterxml.jackson.databind.ObjectMapper (Jackson 2, the version
 	// already on the classpath via jjwt-jackson and used by @JsonProperty elsewhere).
-	private final ObjectMapper objectMapper = new ObjectMapper();
+	// JavaTimeModule registered defensively - see RedisService, which owns the same kind
+	// of mapper and hit exactly this gap the moment it needed to serialize an Instant.
+	private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
 	@Value("${aws.sns.room-events-topic-arn}")
 	private String topicArn;
