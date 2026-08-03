@@ -148,20 +148,27 @@ create_policy "$HISTORY_QUEUE_URL" "$HISTORY_QUEUE_ARN"
 
 echo "Subscribing queues..."
 
+# RawMessageDelivery=true so each queue receives the PlaybackEvent JSON directly as the
+# message body -- without it, SQS wraps it in the SNS notification envelope
+# ({"Type": "Notification", "Message": "<json>", ...}) and every consumer would need to
+# unwrap that itself before parsing.
 awslocal sns subscribe \
     --topic-arn "$TOPIC_ARN" \
     --protocol sqs \
-    --notification-endpoint "$SYNC_QUEUE_ARN"
+    --notification-endpoint "$SYNC_QUEUE_ARN" \
+    --attributes '{"RawMessageDelivery":"true"}'
 
 awslocal sns subscribe \
     --topic-arn "$TOPIC_ARN" \
     --protocol sqs \
-    --notification-endpoint "$ANALYTICS_QUEUE_ARN"
+    --notification-endpoint "$ANALYTICS_QUEUE_ARN" \
+    --attributes '{"RawMessageDelivery":"true"}'
 
 awslocal sns subscribe \
     --topic-arn "$TOPIC_ARN" \
     --protocol sqs \
-    --notification-endpoint "$HISTORY_QUEUE_ARN"
+    --notification-endpoint "$HISTORY_QUEUE_ARN" \
+    --attributes '{"RawMessageDelivery":"true"}'
 
 ###############################################
 # CloudFormation: CloudFront (OAC + signed URL key group)

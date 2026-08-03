@@ -1,0 +1,206 @@
+{
+  "info": {
+    "name": "SyncBeat WebSocket (STOMP) - Frame Reference",
+    "description": "Frame-text REFERENCE for the mainframe's STOMP-over-WebSocket layer (see syncbeat-service-breakdown.md \u2014 Backend API Service \u2014 WebSocket layer). Pairs with SyncBeat-Mainframe.postman_collection.json for {{room_id}}/{{track_id}}.\n\n**Important: Postman does not support importing/exporting native WebSocket requests as collection JSON** (confirmed open limitation \u2014 see postmanlabs/postman-app-support issues #11252 and #12316). The items below are plain HTTP-shaped placeholders that will NOT behave as real WebSocket requests if you hit Send on them \u2014 they exist purely so the exact STOMP frame text for each step is versioned, readable, and copy-pasteable from inside Postman's sidebar.\n\n**Actual workflow (all manual, in Postman's native WebSocket UI):**\n1. Run the REST collection's Auth > Register, then Auth > Login, then Rooms > Create Room (sets {{room_id}}, makes that user the room's host \u2014 only the host can send playback actions).\n2. Run '0. Login (capture access_token)' below to populate {{access_token}} from the httpOnly cookie (see its description for the manual fallback if pm.cookies.get comes up empty).\n3. New > WebSocket Request in Postman. URL: ws://localhost:8080/ws. Click Connect \u2014 expect HTTP 101, not 401 (if you get 401, the mainframe needs SecurityConfig's /ws/** permitAll fix + a restart \u2014 see PROGRESS.md).\n4. In the Message pane, paste each frame below IN ORDER and hit Send after each one, on this SAME connection: 1. Connect's body first, then 2. Subscribe, then whichever of 3-6 you want to test, then optionally 7. Unsubscribe and 8. Disconnect. Postman resolves {{access_token}}/{{room_id}}/{{track_id}} inside the message text against your active environment same as any other request.\n5. Authorization header on the CONNECT frame is the raw JWT \u2014 no 'Bearer ' prefix (WebSocketSecurityConfig's STOMP channel interceptor reads the native Authorization header verbatim, unlike the REST filter which strips that prefix).\n6. Cmd/Ctrl+S on the native WS request lets you save the URL into a collection for reuse \u2014 the frame sequence itself still has to be pasted per session since STOMP is a live, ordered, stateful exchange, not a request/response pair.\n7. To see the broadcast loop close, open a second native WebSocket connection subscribed to the same room topic \u2014 actions sent by the host should echo back to both once syncbeat-sync's consumer is actually running and relaying through Redis Pub/Sub.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "ws_base_url",
+      "value": "ws://localhost:8080"
+    },
+    {
+      "key": "access_token",
+      "value": ""
+    },
+    {
+      "key": "room_id",
+      "value": ""
+    },
+    {
+      "key": "track_id",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Login (capture access_token)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"ada@example.com\",\n  \"password\": \"password123\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/auth/login",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "login"
+          ]
+        },
+        "description": "Same endpoint as the REST collection's Auth > Login \u2014 duplicated here only so this collection is self-contained. Requires the account to already exist (run the REST collection's Auth > Register first, or edit the email/password below to an existing user). Sets {{access_token}} from the httpOnly access_token cookie via the test script; that user becomes the room host if they're also the one who ran Rooms > Create Room."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const token = pm.cookies.get('access_token');",
+              "if (token) {",
+              "    pm.environment.set('access_token', token);",
+              "    console.log('access_token captured from cookie jar');",
+              "} else {",
+              "    console.warn('access_token cookie not found \u2014 open Cookies under Send, copy access_token manually into the {{access_token}} environment variable. This can happen if Postman enforced the cookie\\'s Secure flag over plain http.');",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "STOMP frames (send in this order, over ONE open connection)",
+      "item": [
+        {
+          "name": "1. Connect",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{ws_base_url}}/ws"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "CONNECT\naccept-version:1.1,1.2\nhost:localhost\nAuthorization:{{access_token}}\n\n\u0000"
+            },
+            "description": "First frame on the connection. Authorization is the raw JWT from {{access_token}} \u2014 no 'Bearer ' prefix. Expect a CONNECTED frame back; anything else (or a closed socket) means the token was rejected."
+          },
+          "response": []
+        },
+        {
+          "name": "2. Subscribe to room topic",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{ws_base_url}}/ws"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "SUBSCRIBE\nid:sub-0\ndestination:/topic/room/{{room_id}}\n\n\u0000"
+            },
+            "description": "Send this on the SAME connection opened in step 1. Ties this socket to room {{room_id}} \u2014 server-side, this is what triggers RoomChannelSubscriptionManager to start listening to the room's Redis Pub/Sub channel (once per room per instance, not per subscriber)."
+          },
+          "response": []
+        },
+        {
+          "name": "3. Send PLAY",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{ws_base_url}}/ws"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "SEND\ndestination:/app/room/{{room_id}}/action\ncontent-type:application/json\n\n{\"type\":\"PLAY\",\"position_ms\":0}\u0000"
+            },
+            "description": "Only accepted if {{access_token}}'s user is the room's host (checked against Redis room state) \u2014 otherwise PlaybackController logs a warning server-side and silently drops it (no error frame yet, see PROGRESS.md known deferred items). On success this publishes a PlaybackEvent to SNS; you won't see anything come back over THIS socket until syncbeat-sync consumes it and the mainframe rebroadcasts to /topic/room/{{room_id}}."
+          },
+          "response": []
+        },
+        {
+          "name": "4. Send PAUSE",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{ws_base_url}}/ws"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "SEND\ndestination:/app/room/{{room_id}}/action\ncontent-type:application/json\n\n{\"type\":\"PAUSE\",\"position_ms\":15000}\u0000"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "5. Send SEEK",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{ws_base_url}}/ws"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "SEND\ndestination:/app/room/{{room_id}}/action\ncontent-type:application/json\n\n{\"type\":\"SEEK\",\"position_ms\":42000}\u0000"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "6. Send SKIP",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{ws_base_url}}/ws"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "SEND\ndestination:/app/room/{{room_id}}/action\ncontent-type:application/json\n\n{\"type\":\"SKIP\",\"track_id\":\"{{track_id}}\"}\u0000"
+            },
+            "description": "Needs {{track_id}} \u2014 run the REST collection's Tracks > Create Track first (or paste any existing track id)."
+          },
+          "response": []
+        },
+        {
+          "name": "7. Unsubscribe",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{ws_base_url}}/ws"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "UNSUBSCRIBE\nid:sub-0\n\n\u0000"
+            },
+            "description": "id must match the SUBSCRIBE frame's id (sub-0). Server-side this drops the local ref-count in RoomChannelSubscriptionManager; once it hits zero for this room on this instance, the Redis Pub/Sub listener for room:{{room_id}} is torn down."
+          },
+          "response": []
+        },
+        {
+          "name": "8. Disconnect",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{ws_base_url}}/ws"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "DISCONNECT\nreceipt:disconnect-1\n\n\u0000"
+            },
+            "description": "Graceful close. Also try just closing the socket without sending this \u2014 that exercises RoomSubscriptionEventListener's SessionDisconnectEvent path (unsubscribe + RedisService.removeMember), which is the other thing this collection exists to test."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

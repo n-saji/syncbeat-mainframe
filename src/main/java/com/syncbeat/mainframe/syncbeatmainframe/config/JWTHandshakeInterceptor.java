@@ -1,6 +1,4 @@
 package com.syncbeat.mainframe.syncbeatmainframe.config;
-import com.syncbeat.mainframe.syncbeatmainframe.service.JWTService;
-import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.server.ServerHttpRequest;
