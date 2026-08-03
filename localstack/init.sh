@@ -12,6 +12,28 @@ echo "Creating S3 bucket..."
 
 awslocal s3 mb s3://syncbeat-audio || true
 
+echo "Configuring S3 bucket CORS..."
+
+# Needed for the admin track-upload flow: the browser PUTs the audio file directly to the
+# presigned S3 URL from http://localhost:3000, which is a cross-origin request the bucket
+# must explicitly allow or the browser blocks it before it ever reaches S3.
+S3_CORS_FILE=$(mktemp)
+cat > "$S3_CORS_FILE" <<'EOF'
+{
+  "CORSRules": [
+    {
+      "AllowedOrigins": ["http://localhost:3000"],
+      "AllowedMethods": ["GET", "PUT", "HEAD"],
+      "AllowedHeaders": ["*"],
+      "ExposeHeaders": ["ETag"],
+      "MaxAgeSeconds": 3000
+    }
+  ]
+}
+EOF
+awslocal s3api put-bucket-cors --bucket syncbeat-audio --cors-configuration "file://$S3_CORS_FILE"
+rm -f "$S3_CORS_FILE"
+
 ###############################################
 # SNS FIFO Topic
 ###############################################

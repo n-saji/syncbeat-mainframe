@@ -14,6 +14,10 @@ Parameters:
     Type: String
     Default: syncbeat-signing-key-v1
     Description: Must change if you rotate the public key (CloudFront requires uniqueness)
+  AllowedOrigin:
+    Type: String
+    Default: http://localhost:3000
+    Description: Frontend origin allowed to fetch audio cross-origin (matches mainframe's ALLOWED_ORIGINS default)
 
 Resources:
 
@@ -74,6 +78,39 @@ Resources:
           EnableAcceptEncodingBrotli: true
 
   ###############################################
+  # CORS response headers policy
+  ###############################################
+  # Without this, LocalStack's CloudFront emulation outright rejects cross-origin requests
+  # with 403 (confirmed: identical request succeeds without an Origin header, 403s with one) -
+  # unlike real AWS CloudFront, which would just omit CORS headers rather than reject the
+  # request. <audio>/<video> elements don't need CORS approval to play media, only to have it
+  # read via JS, so this is required here specifically to unblock LocalStack's stricter
+  # behavior, not because playback itself needs CORS on real AWS.
+  CorsResponseHeadersPolicy:
+    Type: AWS::CloudFront::ResponseHeadersPolicy
+    Properties:
+      ResponseHeadersPolicyConfig:
+        Name: syncbeat-audio-cors-policy
+        Comment: Allows the frontend origin to fetch/play signed audio URLs cross-origin
+        CorsConfig:
+          AccessControlAllowCredentials: false
+          AccessControlAllowHeaders:
+            Items:
+              - "*"
+          AccessControlAllowMethods:
+            Items:
+              - GET
+              - HEAD
+          AccessControlAllowOrigins:
+            Items:
+              - !Ref AllowedOrigin
+          AccessControlExposeHeaders:
+            Items:
+              - "*"
+          AccessControlMaxAgeSec: 600
+          OriginOverride: true
+
+  ###############################################
   # Distribution
   ###############################################
   CloudFrontDistribution:
@@ -99,6 +136,7 @@ Resources:
             - GET
             - HEAD
           CachePolicyId: !Ref CachePolicy
+          ResponseHeadersPolicyId: !Ref CorsResponseHeadersPolicy
           TrustedKeyGroups:
             - !Ref SigningKeyGroup
 

@@ -18,6 +18,14 @@ services:
       # no-ops them with a warning, but that becomes a hard failure in
       # future releases unless this is set explicitly.
       CFN_IGNORE_UNSUPPORTED_RESOURCE_TYPES: 1
+      # LocalStack's edge service has its own origin allowlist (a CSRF-style safety feature,
+      # separate from and evaluated before any CloudFront/S3 CORS config) that 403s requests
+      # from unrecognized Origins with a flat, bodyless response -- confirmed via curl this is
+      # what was actually blocking the browser's cross-origin GET (CloudFront's own
+      # ResponseHeadersPolicy CORS config, and the S3 bucket's CORS config, were both already
+      # correct and had no effect on this). Needed for the frontend at localhost:3000 to
+      # fetch/play signed audio URLs and PUT uploads at all.
+      EXTRA_CORS_ALLOWED_ORIGINS: http://localhost:3000
     volumes:
       - ./localstack/init.sh:/etc/localstack/init/ready.d/init.sh
       - ./localstack/cloudformation:/etc/localstack/cloudformation

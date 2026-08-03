@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 import org.hibernate.annotations.UuidGenerator;
 
 import java.time.LocalDateTime;
@@ -30,6 +31,7 @@ public class User {
 	@Column(unique = true,  nullable = false)
 	private String email;
 
+	@ToString.Exclude
 	@Column(nullable = false)
 	private String password;
 

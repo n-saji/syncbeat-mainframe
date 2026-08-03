@@ -1,8 +1,5 @@
 package com.syncbeat.mainframe.syncbeatmainframe.config;
 
-import com.syncbeat.mainframe.syncbeatmainframe.repository.UserRepository;
-import com.syncbeat.mainframe.syncbeatmainframe.service.JWTService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
@@ -11,19 +8,17 @@ import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.messaging.support.MessageHeaderAccessor;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 
-import java.util.List;
-import java.util.UUID;
-
+/**
+ * The STOMP session principal is already set at handshake time by {@link UserHandshakeHandler}
+ * (from the {@code access_token} cookie, via {@link JWTHandshakeInterceptor}), so this just
+ * refuses to let an unauthenticated handshake's CONNECT frame through — defense in depth, since
+ * {@link JWTHandshakeInterceptor} should already have rejected the handshake itself.
+ */
 @Configuration
-@RequiredArgsConstructor
 public class WebSocketSecurityConfig implements WebSocketMessageBrokerConfigurer {
-	private final JWTService jwtService;
-	private final UserRepository userRepository;
 
 	@Override
 	public void configureClientInboundChannel(ChannelRegistration registration) {
@@ -33,24 +28,8 @@ public class WebSocketSecurityConfig implements WebSocketMessageBrokerConfigurer
 				StompHeaderAccessor accessor =
 						MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
 
-				if (StompCommand.CONNECT.equals(accessor.getCommand())) {
-					String token = accessor.getFirstNativeHeader("Authorization");
-					if (token == null || !jwtService.validateAccessToken(token)) {
-						throw new AuthenticationException("Invalid or missing token") {}; // reject CONNECT
-					}
-					String userId = jwtService.getSubjectFromToken(token);
-
-					try {
-						UUID uuid = UUID.fromString(userId);
-
-						var principal = userRepository.findById(uuid).orElseThrow(() -> new RuntimeException("User not found with id: " + uuid));
-						Authentication auth = new UsernamePasswordAuthenticationToken(
-								principal, null, List.of());
-
-						accessor.setUser(auth);
-					} catch (IllegalArgumentException e) {
-						throw new RuntimeException("Invalid user ID in token: " + userId);
-					}
+				if (StompCommand.CONNECT.equals(accessor.getCommand()) && accessor.getUser() == null) {
+					throw new AuthenticationException("Unauthenticated WS handshake") {};
 				}
 				return message;
 			}
