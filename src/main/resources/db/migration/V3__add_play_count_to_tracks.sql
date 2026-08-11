@@ -1,0 +1,2 @@
+ALTER TABLE tracks
+    ADD COLUMN play_count BIGINT NOT NULL DEFAULT 0;

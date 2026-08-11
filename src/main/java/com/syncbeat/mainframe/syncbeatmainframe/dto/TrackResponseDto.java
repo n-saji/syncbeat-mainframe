@@ -22,6 +22,8 @@ public class TrackResponseDto {
 	private Integer durationMs;
 	@JsonProperty("s3_key")
 	private String s3Key;
+	@JsonProperty("play_count")
+	private Long playCount;
 	@JsonProperty("created_at")
 	private LocalDateTime createdAt;
 	@JsonProperty("updated_at")
@@ -35,6 +37,7 @@ public class TrackResponseDto {
 				.artist(track.getArtist())
 				.durationMs(track.getDurationMs())
 				.s3Key(track.getS3Key())
+				.playCount(track.getPlayCount())
 				.createdAt(track.getCreatedAt())
 				.updatedAt(track.getUpdatedAt())
 				.build();

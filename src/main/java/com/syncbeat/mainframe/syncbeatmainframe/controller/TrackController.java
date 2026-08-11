@@ -49,6 +49,15 @@ public class TrackController {
 	}
 
 
+	@GetMapping("/trending")
+	public ResponseEntity<List<TrackResponseDto>> getTrendingTracks(
+			@RequestParam(defaultValue = "10") int limit) {
+		log.info("Fetching top {} trending tracks", limit);
+		List<TrackResponseDto> tracks = trackService.getTrendingTracks(limit);
+		return ResponseEntity.ok(tracks);
+	}
+
+
 	@GetMapping("/{id}")
 	public ResponseEntity<TrackResponseDto> getTrackById(@PathVariable UUID id) {
 		log.info("Fetching track with ID: {}", id);

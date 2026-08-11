@@ -8,6 +8,7 @@ import com.syncbeat.mainframe.syncbeatmainframe.models.Track;
 import com.syncbeat.mainframe.syncbeatmainframe.repository.TrackRepository;
 import com.syncbeat.mainframe.syncbeatmainframe.utils.CloudFrontUtilities;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -88,6 +89,21 @@ public class TrackService {
 	@Transactional(readOnly = true)
 	public List<TrackResponseDto> getAllTracks() {
 		return trackRepository.findAll()
+				.stream()
+				.map(TrackResponseDto::fromEntity)
+				.collect(Collectors.toList());
+	}
+
+
+	private static final int MAX_TRENDING_LIMIT = 100;
+
+	// play_count is only as fresh as syncbeat-analytics's last flush (every few
+	// minutes, see that service's README) - this reads the durable Postgres total,
+	// not the live Redis counters.
+	@Transactional(readOnly = true)
+	public List<TrackResponseDto> getTrendingTracks(int limit) {
+		int clampedLimit = Math.min(Math.max(limit, 1), MAX_TRENDING_LIMIT);
+		return trackRepository.findAllByOrderByPlayCountDesc(PageRequest.of(0, clampedLimit))
 				.stream()
 				.map(TrackResponseDto::fromEntity)
 				.collect(Collectors.toList());
