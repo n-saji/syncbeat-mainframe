@@ -1,0 +1,8 @@
+target
+.idea
+.git
+.vscode
+.env
+localstack
+postman
+*.md
