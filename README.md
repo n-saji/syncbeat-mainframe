@@ -3,8 +3,8 @@
 The only client-facing service in SyncBeat. A Spring Boot app that handles
 REST (auth, rooms, tracks, playlists, users), holds the live WebSocket/STOMP
 connections for rooms, and publishes playback commands onto SNS for the
-downstream consumers (`syncbeat-sync`, `syncbeat-analytics`, and the
-not-yet-built history/logging consumer) to fan out to.
+downstream consumers (`syncbeat-sync`, `syncbeat-analytics`, and the 
+history/logging consumer) to fan out to.
 
 ## System architecture
 
@@ -85,26 +85,3 @@ Spring Boot 4.1 (Web, WebSocket, Data JPA, Data Redis, Security, Validation),
 Flyway (Postgres migrations), AWS SDK v2 (S3, SNS, CloudFront signed URLs),
 Lombok, Java 17, Maven.
 
-## Running locally
-
-```bash
-cd syncbeat-mainframe
-docker compose up -d          # Postgres is expected separately; this brings up LocalStack + Redis
-cp .env.example .env          # fill in JWT_SECRET, LOCALSTACK_AUTH_TOKEN, etc.
-./mvnw spring-boot:run
-```
-
-`localstack/init.sh` runs automatically on container start and creates the
-S3 bucket, `room-events-topic.fifo`, all three FIFO queues + their DLQs
-(`maxReceiveCount: 5` redrive policy), and the SNS→SQS subscriptions — the
-whole event backbone exists before the app itself boots.
-
-With `SPRING_PROFILES_ACTIVE` unset, the app defaults to the `local` profile
-(`application-local.properties`), which points the AWS SDK at LocalStack
-(`http://localhost:4566`) with dummy credentials instead of real AWS.
-
-## Tests
-
-```bash
-./mvnw test
-```
